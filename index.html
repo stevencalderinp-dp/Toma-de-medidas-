@@ -158,7 +158,7 @@
 </div>
 <script>
 (function(){
-var GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbynR-NY3iDAKbS5U5fPIPY8YteNNMR2eYlZXyscmd6umSnoHD6EK0pP7wfqDoCphJ5l/exec";
+var GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwWHg7cpHgLOwJAqrTBL5LMW2jA-89Rlq6-kNR_tu-NeqIz8tTQVU5uSlpaloGYVeoagw/exec";
 
 window.storage = {
   get: function(key) {
@@ -400,7 +400,6 @@ function labeledPhoto(model, key, labelText){
   return wrapper;
 }
 
-// FUNCIONALIDAD DESPLEGABLE DE MEDIDAS POR CADA PLACA
 function placasPorProductoBlock(m, key, title){
   if (!m[key]) m[key] = {};
   if (!m[key + '_medidas']) m[key + '_medidas'] = {};
@@ -455,7 +454,6 @@ function placasPorProductoBlock(m, key, title){
     itemBox.appendChild(dynamicFieldsContainer);
     block.appendChild(itemBox);
 
-    // Renderizar si ya tenía un valor precargado
     if (m[key][p]) renderMedidasPlacas(m[key][p]);
   });
   return block;

@@ -48,7 +48,6 @@
     white-space:nowrap;
   }
   .stamp.dirty{border-color:var(--accent);color:var(--accent);}
-  .stamp.saved{border-color:var(--ok);color:#8FD1AE;}
   .tabs{display:flex;gap:0;margin-top:12px;background:#28323D;border-radius:8px;padding:3px;}
   .tab{
     flex:1;text-align:center;padding:9px 4px;font-size:13px;font-weight:600;
@@ -461,11 +460,41 @@ function renderTotem(){
   ]));
 }
 
+// SOLUCIÓN AL ERROR 302: Envío vía Formulario Dinámico a Iframe Oculto
 function sendToGoogleSheets(data){
-  return fetch(GOOGLE_SCRIPT_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify(data)
+  return new Promise(function(resolve, reject) {
+    try {
+      var iframeName = 'hidden_iframe_' + Date.now();
+      var iframe = document.createElement('iframe');
+      iframe.name = iframeName;
+      iframe.style.display = 'none';
+      document.body.appendChild(iframe);
+
+      var form = document.createElement('form');
+      form.method = 'POST';
+      form.action = GOOGLE_SCRIPT_URL;
+      form.target = iframeName;
+
+      var input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = 'postData';
+      input.value = JSON.stringify(data);
+      form.appendChild(input);
+
+      document.body.appendChild(form);
+      
+      iframe.onload = function() {
+        setTimeout(function() {
+          document.body.removeChild(form);
+          document.body.removeChild(iframe);
+          resolve({ status: 'ok' });
+        }, 500);
+      };
+
+      form.submit();
+    } catch (err) {
+      reject(err);
+    }
   });
 }
 
@@ -482,7 +511,7 @@ function saveUnifiedRecord(){
   btn.disabled = true;
   btn.textContent = 'Guardando y subiendo a Drive...';
 
-  sendToGoogleSheets(m).then(function(res){
+  sendToGoogleSheets(m).then(function(){
     btn.disabled = false;
     alert('¡Inspección guardada con éxito! Revisa Google Sheets y Google Drive.');
     state.form = { fecha:'', ciudad:'', nombreEds:'', codigoEds:'', surtidores:[] };

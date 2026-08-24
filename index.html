@@ -134,9 +134,7 @@
     flex:1;padding:8px;font-size:12.5px;font-weight:600;border-radius:6px;
     border:1px solid var(--line);background:#FCFBF8;color:var(--ink-2);cursor:pointer;
   }
-  .empty{
-    text-align:center;padding:50px 20px;color:#9A9384;
-  }
+  .empty{text-align:center;padding:50px 20px;color:#9A9384;}
   .empty div:first-child{font-size:32px;margin-bottom:8px;}
   .toolbar{display:flex;gap:8px;margin-bottom:14px;}
   .toolbar input{flex:1;}
@@ -162,22 +160,24 @@
       <span class="stamp" id="statusStamp">nuevo</span>
     </div>
     <div class="tabs" id="mainTabs">
-      <div class="tab active" data-tab="surtidor">Surtidor</div>
-      <div class="tab" data-tab="totem">Totem</div>
-      <div class="tab" data-tab="registros">Registros</div>
+      <div class="tab active" data-tab="surtidor">1. Surtidor</div>
+      <div class="tab" data-tab="totem">2. Tótem</div>
+      <div class="tab" data-tab="registros">Historial</div>
     </div>
   </div>
   <div id="offlineBanner" style="display:none;background:#B23A2E;color:#fff;text-align:center;padding:7px;font-size:12.5px;font-weight:600;">
-    Sin conexión — conéctate a wifi o mejora la señal antes de guardar
+    Sin conexión — los registros se guardarán localmente hasta recuperar señal
   </div>
   <div class="wrap" id="wrap"></div>
   <div class="footer-bar" id="footerBar">
     <button class="btn btn-secondary" id="btnClear">Limpiar</button>
-    <button class="btn btn-primary" id="btnSave">Guardar registro</button>
+    <button class="btn btn-primary" id="btnNextOrSave">Continuar a Tótem &rarr;</button>
   </div>
 </div>
 <script>
 (function(){
+var GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbynR-NY3iDAKbS5U5fPIPY8YteNNMR2eYlZXyscmd6umSnoHD6EK0pP7wfqDoCphJ5l/exec";
+
 window.storage = {
   get: function(key) {
     return new Promise(function(resolve, reject) {
@@ -219,27 +219,24 @@ window.storage = {
 
 var state = {
   tab: 'surtidor',
-  surtidor: {},
-  totem: {},
-  photoSurtidor: null,
-  photoTotem: null,
+  form: {
+    fecha: '',
+    ciudad: '',
+    nombreEds: '',
+    codigoEds: ''
+  },
   dirty: false
 };
+
 var PRODUCTOS = ['CTE','EXTRA','DIESEL'];
 var PRODUCTOS_TOTEM = ['CTE','EXTRA','DIESEL','GNV'];
 var MARCAS_SURTIDOR = ['WAYNE','GILBARCO'];
 var MODELOS_SURTIDOR = [
-  'WAYNE H5000',
-  'WAYNE H4000',
-  'WAYNE HELIX H1000',
-  'WAYNE H1000',
-  'WAYNE ENCORE 500',
-  'WAYNE ENCORE 300',
-  'WAYNE ENCORE 500SD',
-  'GILBARCO PRIME PHD 2422-D',
-  'GILBARCO PRIME PHD 4822-D',
-  'GILBARCO ADVANTAGE'
+  'WAYNE H5000','WAYNE H4000','WAYNE HELIX H1000','WAYNE H1000',
+  'WAYNE ENCORE 500','WAYNE ENCORE 300','WAYNE ENCORE 500SD',
+  'GILBARCO PRIME PHD 2422-D','GILBARCO PRIME PHD 4822-D','GILBARCO ADVANTAGE'
 ];
+
 function el(tag, attrs, children){
   var e = document.createElement(tag);
   attrs = attrs || {};
@@ -251,6 +248,7 @@ function el(tag, attrs, children){
   (children||[]).forEach(function(c){ if(c) e.appendChild(c); });
   return e;
 }
+
 function field(labelText, inputEl, required){
   var f = el('div', {class:'field'});
   var lbl = el('label', {});
@@ -260,18 +258,21 @@ function field(labelText, inputEl, required){
   f.appendChild(inputEl);
   return f;
 }
+
 function textInput(model, key, placeholder, type){
   var i = el('input', {type: type||'text', placeholder: placeholder||''});
   i.value = model[key] || '';
   i.addEventListener('input', function(){ model[key] = i.value; markDirty(); });
   return i;
 }
+
 function textArea(model, key, placeholder){
   var t = el('textarea', {placeholder: placeholder||''});
   t.value = model[key] || '';
   t.addEventListener('input', function(){ model[key] = t.value; markDirty(); });
   return t;
 }
+
 function selectInput(model, key, options){
   var s = el('select', {});
   s.appendChild(el('option', {value:'', text:'Selecciona...'}));
@@ -283,6 +284,7 @@ function selectInput(model, key, options){
   s.addEventListener('change', function(){ model[key] = s.value; markDirty(); });
   return s;
 }
+
 function choiceGroup(model, key, options){
   var g = el('div', {class:'choice-group'});
   options.forEach(function(o){
@@ -298,6 +300,7 @@ function choiceGroup(model, key, options){
   });
   return g;
 }
+
 function checkPillGroup(model, key, options){
   if (!model[key]) model[key] = [];
   var g = el('div', {class:'check-grid'});
@@ -315,6 +318,7 @@ function checkPillGroup(model, key, options){
   });
   return g;
 }
+
 function sectionEl(num, title, bodyChildren){
   var s = el('div', {class:'section'});
   var head = el('div', {class:'section-head'});
@@ -327,7 +331,8 @@ function sectionEl(num, title, bodyChildren){
   s.appendChild(body);
   return s;
 }
-function photoField(model, key, previewSlot){
+
+function photoField(model, key){
   var wrapper = el('div', {class:'field'});
   wrapper.appendChild(el('label', {text:'Imagen de referencia'}));
   var btn = el('div', {class:'photo-btn'});
@@ -337,8 +342,7 @@ function photoField(model, key, previewSlot){
   var isDataUrl = typeof model[key] === 'string' && model[key].indexOf('data:image') === 0;
   img.style.display = isDataUrl ? 'block' : 'none';
   if (isDataUrl) img.src = model[key];
-  var savedNote = el('div', {class:'hint', text:'Foto guardada (cargando vista previa...)'});
-  savedNote.style.display = (model[key] === true) ? 'block' : 'none';
+
   btn.addEventListener('click', function(){ input.click(); });
   input.addEventListener('change', function(e){
     var file = e.target.files[0];
@@ -358,7 +362,6 @@ function photoField(model, key, previewSlot){
         model[key] = dataUrl;
         img.src = dataUrl;
         img.style.display = 'block';
-        savedNote.style.display = 'none';
         markDirty();
       };
       image.src = ev.target.result;
@@ -367,10 +370,10 @@ function photoField(model, key, previewSlot){
   });
   wrapper.appendChild(btn);
   wrapper.appendChild(input);
-  wrapper.appendChild(savedNote);
   wrapper.appendChild(img);
   return wrapper;
 }
+
 function syncSurtidoresArray(m){
   var n = parseInt(m.cantSurtidores, 10);
   if (isNaN(n) || n < 0) n = 0;
@@ -379,6 +382,7 @@ function syncSurtidoresArray(m){
   while (m.surtidores.length < n) m.surtidores.push({});
   while (m.surtidores.length > n) m.surtidores.pop();
 }
+
 function surtidorCountInput(m){
   var i = el('input', {type:'number', min:'0'});
   i.value = m.cantSurtidores || '';
@@ -390,6 +394,7 @@ function surtidorCountInput(m){
   });
   return i;
 }
+
 function surtidoresRepeatingBlock(m){
   syncSurtidoresArray(m);
   var container = el('div',{});
@@ -402,24 +407,25 @@ function surtidoresRepeatingBlock(m){
     block.appendChild(el('div',{class:'cara-title', text:'Surtidor ' + (idx+1)}));
     block.appendChild(field('Marca', selectInput(s,'marca',MARCAS_SURTIDOR)));
     block.appendChild(field('Modelo', selectInput(s,'modelo',MODELOS_SURTIDOR)));
-    block.appendChild(field('Descripción del surtidor', textArea(s,'descripcion',
-      'Ej: Dispensador de 4 productos, 8 mangueras, 4 visores')));
-    block.appendChild(photoField(s, 'fotoCara1', null));
-    var lbl1 = block.querySelector('.field:last-child label');
+    block.appendChild(field('Descripción del surtidor', textArea(s,'descripcion','Ej: Dispensador de 4 productos')));
+    block.appendChild(photoField(s, 'fotoCara1'));
+    var lbl1 = block.querySelector('.field:nth-last-child(2) label');
     if (lbl1) lbl1.textContent = 'Foto cara 1';
-    block.appendChild(photoField(s, 'fotoCara2', null));
+    block.appendChild(photoField(s, 'fotoCara2'));
     var lbl2 = block.querySelector('.field:last-child label');
     if (lbl2) lbl2.textContent = 'Foto cara 2';
     container.appendChild(block);
   });
   return container;
 }
+
 function labeledPhoto(model, key, labelText){
-  var wrapper = photoField(model, key, null);
+  var wrapper = photoField(model, key);
   var lbl = wrapper.querySelector('label');
   if (lbl) lbl.textContent = labelText;
   return wrapper;
 }
+
 function placasPorProductoBlock(m, key, title){
   if (!m[key]) m[key] = {};
   var block = el('div',{class:'cara-block'});
@@ -442,52 +448,36 @@ function placasPorProductoBlock(m, key, title){
     row.appendChild(input);
     block.appendChild(row);
   });
-  var total = PRODUCTOS.reduce(function(sum,p){ return sum + (parseInt(m[key][p],10)||0); }, 0);
-  block.appendChild(el('div',{class:'hint', text:'Total placas: ' + total}));
-  var mkey = key + '_medidas';
-  if (!m[mkey]) m[mkey] = [];
-  while (m[mkey].length < total) m[mkey].push('');
-  while (m[mkey].length > total) m[mkey].pop();
-  if (total > 0){
-    block.appendChild(el('div',{class:'subgrid-label', text:'Medida de cada placa (cm)'}));
-    m[mkey].forEach(function(val, idx){
-      var mWrap = el('div', {style:'margin-bottom:8px;'});
-      mWrap.appendChild(el('label',{text:'Placa ' + (idx+1), style:'font-size:12px;font-weight:600;color:var(--ink-2);margin-bottom:3px;display:block;'}));
-      var mInput = el('input',{type:'text', placeholder:'Ej: 20x15'});
-      mInput.value = val;
-      mInput.addEventListener('input', function(){
-        m[mkey][idx] = mInput.value;
-        markDirty();
-      });
-      mWrap.appendChild(mInput);
-      block.appendChild(mWrap);
-    });
-  }
   return block;
 }
+
 function markDirty(){
   state.dirty = true;
   var stamp = document.getElementById('statusStamp');
   stamp.textContent = 'sin guardar';
   stamp.className = 'stamp dirty';
 }
+
 function markSaved(){
   state.dirty = false;
   var stamp = document.getElementById('statusStamp');
   stamp.textContent = 'guardado';
   stamp.className = 'stamp saved';
 }
+
 function markNew(){
   state.dirty = false;
   var stamp = document.getElementById('statusStamp');
   stamp.textContent = 'nuevo';
   stamp.className = 'stamp';
 }
+
 function renderSurtidor(){
-  var m = state.surtidor;
+  var m = state.form;
   var wrap = document.getElementById('wrap');
   wrap.innerHTML = '';
-  wrap.appendChild(sectionEl(1, 'Datos generales', [
+  
+  wrap.appendChild(sectionEl(1, 'Datos generales de la EDS', [
     (function(){var d=el('div',{class:'row2'});
       d.appendChild(field('Fecha', textInput(m,'fecha','','date'), true));
       d.appendChild(field('Ciudad o municipio', textInput(m,'ciudad','Ej. Barranquilla')));
@@ -495,17 +485,19 @@ function renderSurtidor(){
     field('Nombre EDS', textInput(m,'nombreEds','Nombre de la estación'), true),
     field('Código EDS', textInput(m,'codigoEds',''))
   ]));
-  wrap.appendChild(sectionEl(2, 'Cantidades', [
+  
+  wrap.appendChild(sectionEl(2, 'Cantidades (Surtidores)', [
     (function(){var d=el('div',{class:'row3'});
       d.appendChild(field('Cant. surtidores', surtidorCountInput(m)));
       d.appendChild(field('Caras por surtidor', textInput(m,'cantCaras','','number')));
       d.appendChild(field('Cant. productos', textInput(m,'cantProductos','','number')));
       return d;})()
   ]));
-  wrap.appendChild(sectionEl(3, 'Surtidores de esta EDS', [
-    el('div',{class:'hint', text:'Marca, modelo y fotos pueden variar por cada surtidor.'}),
+
+  wrap.appendChild(sectionEl(3, 'Detalle de surtidores', [
     surtidoresRepeatingBlock(m)
   ]));
+
   wrap.appendChild(sectionEl(4, 'Productos ofrecidos por cara', [
     (function(){var b=el('div',{class:'cara-block'});
       b.appendChild(el('div',{class:'cara-title',text:'Cara surtidor 1'}));
@@ -516,496 +508,194 @@ function renderSurtidor(){
       b.appendChild(checkPillGroup(m,'productosCara2',PRODUCTOS));
       return b;})()
   ]));
-  wrap.appendChild(sectionEl(5, 'Medidas (cm)', [
+
+  wrap.appendChild(sectionEl(5, 'Medidas Surtidor (cm)', [
     (function(){var d=el('div',{class:'row2'});
-      d.appendChild(field('Ancho cenefa surtidor', textInput(m,'anchoCenefa','','number')));
+      d.appendChild(field('Ancho cenefa', textInput(m,'anchoCenefa','','number')));
       d.appendChild(field('Alto surtidor', textInput(m,'altoSurtidor','','number')));
       return d;})(),
     field('Profundidad surtidor', textInput(m,'profundidad','','number')),
-    el('div',{class:'hint', text:'Indica cuántas placas hay de cada producto en cada cara, y la medida de cada una.'}),
     placasPorProductoBlock(m,'placasCara1','Placas cara 1'),
     placasPorProductoBlock(m,'placasCara2','Placas cara 2')
   ]));
-  wrap.appendChild(sectionEl(6, 'Ubicación sticker licencia', [
-    field('Sobre placa', choiceGroup(m,'stickerSobrePlaca',['SI','NO'])),
-    field('A un lado del surtidor', choiceGroup(m,'stickerAUnLado',['SI','NO']))
-  ]));
-  wrap.appendChild(sectionEl(7, 'Entorno del surtidor', [
-    (function(){var g=el('div',{});
-      ['Viga sobre surtidor','Pegado a columna','Mueble de productos cerca','Tanque de uria pegado','Techo'].forEach(function(label){
-        var key = 'entorno_' + label.replace(/\s+/g,'_');
-        g.appendChild(field(label, choiceGroup(m, key, ['SI','NO'])));
-      });
-      return g;})()
-  ]));
-  wrap.appendChild(sectionEl(8, 'Requisitos de altura de trabajo', [
-    checkPillGroup(m,'requisitosAltura',['ESCALERA DOBLE TIRO','ESCALERA MULTIPROPOSITO','ESCALERA TELESCOPICA'])
-  ]));
-  wrap.appendChild(sectionEl(9, 'Información general de la EDS', [
+
+  wrap.appendChild(sectionEl(6, 'Información general / Entorno', [
     field('Cuenta con baños', choiceGroup(m,'cuentaBanos',['SI','NO'])),
-    (function(){var d=el('div',{class:'row3'});
-      d.appendChild(field('Cant. baños', textInput(m,'cantBanos','','number')));
-      d.appendChild(field('Baño dama', textInput(m,'banoDama','','number')));
-      d.appendChild(field('Baño caballero', textInput(m,'banoCaballero','','number')));
-      return d;})(),
-    field('Baño familiar', textInput(m,'banoFamiliar','','number')),
     labeledPhoto(m,'fotoBanos','Foto de los baños'),
-    (function(){var d=el('div',{class:'row3'});
-      d.appendChild(field('Cant. islas', textInput(m,'cantIslas','','number')));
-      d.appendChild(field('Islas carro', textInput(m,'islasCarro','','number')));
-      d.appendChild(field('Islas moto', textInput(m,'islasMoto','','number')));
-      return d;})(),
-    field('Isla GNV', textInput(m,'islaGnv','','number')),
-    labeledPhoto(m,'fotoIslas','Foto donde se vean claramente las islas'),
     field('Cuenta con caja de luz', choiceGroup(m,'cuentaCajaLuz',['SI','NO'])),
-    field('Cant. caja de luz', textInput(m,'cantCajaLuz','','number')),
-    labeledPhoto(m,'fotoGeneralEds','Foto general de la EDS')
-  ]));
-  wrap.appendChild(sectionEl(10, 'Observaciones', [
-    textArea(m,'observaciones','Notas adicionales de la inspección...')
+    labeledPhoto(m,'fotoGeneralEds','Foto general de la EDS'),
+    field('Observaciones Surtidor', textArea(m,'observaciones','Notas adicionales de los surtidores...'))
   ]));
 }
+
 function renderTotem(){
-  var m = state.totem;
+  var m = state.form;
   var wrap = document.getElementById('wrap');
   wrap.innerHTML = '';
-  wrap.appendChild(sectionEl(1, 'Datos generales', [
+  
+  var syncBanner = el('div', {class:'banner', text:'\u2713 Datos vinculados: ' + (m.nombreEds || 'Sin nombre') + ' (' + (m.fecha || 'Sin fecha') + ')'});
+  wrap.appendChild(syncBanner);
+
+  wrap.appendChild(sectionEl(1, 'Datos del Tótem', [
     (function(){var d=el('div',{class:'row2'});
-      d.appendChild(field('Fecha', textInput(m,'fecha','','date'), true));
-      d.appendChild(field('Ciudad o municipio', textInput(m,'ciudad','')));
+      d.appendChild(field('Altura tótem (cm)', textInput(m,'totem_alturaTotem','','number')));
+      d.appendChild(field('Modelo tótem', textInput(m,'totem_modeloTotem','')));
       return d;})(),
-    field('Nombre EDS', textInput(m,'nombreEds',''), true),
-    field('Código EDS', textInput(m,'codigoEds',''))
+    field('Descripción del tótem', textArea(m,'totem_descripcionTipo','')),
+    labeledPhoto(m,'fotoTotem1','Foto tótem - cara 1'),
+    labeledPhoto(m,'fotoTotem2','Foto tótem - cara 2')
   ]));
-  wrap.appendChild(sectionEl(2, 'Tipo de tótem', [
-    field('Altura tótem (cm)', textInput(m,'alturaTotem','','number')),
-    field('Modelo tótem', textInput(m,'modeloTotem','')),
-    field('Descripción del tipo de tótem', textArea(m,'descripcionTipo','')),
-    labeledPhoto(m,'foto','Foto tótem - cara 1'),
-    labeledPhoto(m,'foto2','Foto tótem - cara 2')
-  ]));
-  wrap.appendChild(sectionEl(3, 'Cantidades y producto', [
+
+  wrap.appendChild(sectionEl(2, 'Cantidades y Producto Tótem', [
     (function(){var d=el('div',{class:'row3'});
-      d.appendChild(field('Cant. tótem', textInput(m,'cantTotem','','number')));
-      d.appendChild(field('Cant. caras', textInput(m,'cantCaras','','number')));
-      d.appendChild(field('Cant. productos', textInput(m,'cantProductos','','number')));
+      d.appendChild(field('Cant. tótem', textInput(m,'totem_cantTotem','','number')));
+      d.appendChild(field('Cant. caras', textInput(m,'totem_cantCaras','','number')));
+      d.appendChild(field('Cant. productos', textInput(m,'totem_cantProductos','','number')));
       return d;})(),
-    field('Tipo de producto', checkPillGroup(m,'tipoProducto',PRODUCTOS_TOTEM))
+    field('Tipo de producto', checkPillGroup(m,'totem_tipoProducto',PRODUCTOS_TOTEM))
   ]));
-  wrap.appendChild(sectionEl(4, 'Medidas del aviso (cm)', [
+
+  wrap.appendChild(sectionEl(3, 'Medidas del aviso (cm)', [
     el('div',{class:'subgrid-label',text:'Placa nombre producto'}),
     (function(){var d=el('div',{class:'row2'});
-      d.appendChild(field('Ancho', textInput(m,'placaAncho','','number')));
-      d.appendChild(field('Alto', textInput(m,'placaAlto','','number')));
+      d.appendChild(field('Ancho', textInput(m,'totem_placaAncho','','number')));
+      d.appendChild(field('Alto', textInput(m,'totem_placaAlto','','number')));
       return d;})(),
     el('div',{class:'subgrid-label',text:'Recuadro nombres productos'}),
     (function(){var d=el('div',{class:'row2'});
-      d.appendChild(field('Ancho', textInput(m,'recuadroAncho','','number')));
-      d.appendChild(field('Alto', textInput(m,'recuadroAlto','','number')));
+      d.appendChild(field('Ancho', textInput(m,'totem_recuadroAncho','','number')));
+      d.appendChild(field('Alto', textInput(m,'totem_recuadroAlto','','number')));
       return d;})(),
-    el('div',{class:'subgrid-label',text:'Área total aviso nombre proyecto'}),
+    el('div',{class:'subgrid-label',text:'Área total aviso'}),
     (function(){var d=el('div',{class:'row2'});
-      d.appendChild(field('Ancho', textInput(m,'areaAncho','','number')));
-      d.appendChild(field('Alto', textInput(m,'areaAlto','','number')));
+      d.appendChild(field('Ancho', textInput(m,'totem_areaAncho','','number')));
+      d.appendChild(field('Alto', textInput(m,'totem_areaAlto','','number')));
       return d;})()
   ]));
-  wrap.appendChild(sectionEl(5, 'Requisitos de trabajo en alturas', [
-    checkPillGroup(m,'requisitosAltura',['ESCALERA','ANDAMIO CERTIFICADO','MANLIFT']),
-    field('Altura de piso a zona de pantalla de precios (cm)', textInput(m,'alturaPantalla','','number')),
-    field('Luz de domos', choiceGroup(m,'luzDomos',['ENCIENDEN','NO ENCIENDE']))
-  ]));
-  wrap.appendChild(sectionEl(6, 'Obstáculos para instalación', [
-    checkPillGroup(m,'obstaculos',['JARDINERA','CARRETERA','TECHO','OTROS'])
-  ]));
-  wrap.appendChild(sectionEl(7, 'Observaciones', [
-    textArea(m,'observaciones','Notas adicionales de la inspección...')
+
+  wrap.appendChild(sectionEl(4, 'Observaciones Tótem', [
+    textArea(m,'totem_observaciones','Notas finales del tótem...')
   ]));
 }
-function emptyModel(){
-  return {};
+
+function sendToGoogleSheets(data){
+  if (!GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL.indexOf('http') !== 0) return Promise.resolve();
+  return fetch(GOOGLE_SCRIPT_URL, {
+    method: 'POST',
+    mode: 'no-cors',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
 }
-function currentModel(){
-  return state.tab === 'surtidor' ? state.surtidor : state.totem;
-}
-function validate(){
-  var m = currentModel();
+
+function saveUnifiedRecord(){
+  var m = state.form;
   if (!m.fecha || !m.nombreEds){
-    return 'Completa al menos Fecha y Nombre EDS antes de guardar.';
-  }
-  return null;
-}
-function storageSetWithRetry(key, value, shared, attemptsLeft){
-  attemptsLeft = (attemptsLeft === undefined) ? 5 : attemptsLeft;
-  return window.storage.set(key, value).catch(function(err){
-    if (attemptsLeft > 1){
-      var wait = (6 - attemptsLeft) * 1200;
-      return new Promise(function(resolve){ setTimeout(resolve, wait); }).then(function(){
-        return storageSetWithRetry(key, value, shared, attemptsLeft - 1);
-      });
-    }
-    throw err;
-  });
-}
-function saveRecord(){
-  var errMsg = validate();
-  var wrap = document.getElementById('wrap');
-  var existingErr = document.getElementById('validationErr');
-  if (existingErr) existingErr.remove();
-  if (errMsg){
-    var e = el('div',{class:'err', id:'validationErr', text: errMsg});
-    wrap.insertBefore(e, wrap.firstChild);
+    alert('Ingresa al menos la Fecha y el Nombre de la EDS.');
     return;
   }
-  var m = currentModel();
-  var type = state.tab;
-  m._id = m._id || (type + '_' + Date.now() + '_' + Math.random().toString(36).slice(2,8));
-  m._type = type;
+  
+  m._id = m._id || ('eds_' + Date.now() + '_' + Math.random().toString(36).slice(2,8));
   m._savedAt = new Date().toISOString();
-  var saveBtn = document.getElementById('btnSave');
-  saveBtn.disabled = true;
-  saveBtn.textContent = 'Guardando...';
-  var payload = JSON.stringify(m);
-  var sizeKB = Math.round(payload.length / 1024);
-  if (payload.length > 4200000){
-    saveBtn.disabled = false;
-    saveBtn.textContent = 'Guardar registro';
-    var eBig = el('div',{class:'err', text:'El registro pesa demasiado (' + sizeKB + ' KB) por las fotos adjuntas. Vuelve a tomar alguna foto (se comprime al tomarla) o quita una y guarda de nuevo.'});
-    wrap.insertBefore(eBig, wrap.firstChild);
-    return;
-  }
-  storageSetWithRetry('registro:' + m._id, payload, true).then(function(res){
-    saveBtn.disabled = false;
-    saveBtn.textContent = 'Guardar registro';
-    if (res){
-      var savedEds = m.nombreEds;
-      if (state.tab === 'surtidor') state.surtidor = emptyModel();
-      else state.totem = emptyModel();
+  
+  var btn = document.getElementById('btnNextOrSave');
+  btn.disabled = true;
+  btn.textContent = 'Enviando y guardando...';
+
+  // Guardar localmente
+  window.storage.set('registro:' + m._id, JSON.stringify(m)).then(function(){
+    // Enviar a Google Sheets
+    sendToGoogleSheets(m).then(function(){
+      btn.disabled = false;
+      alert('¡Registro guardado y enviado a Google Sheets exitosamente!');
+      state.form = { fecha:'', ciudad:'', nombreEds:'', codigoEds:'' };
       markNew();
-      renderTab();
-      var okMsg = el('div',{class:'banner', text:'Registro de "' + savedEds + '" guardado. Formulario listo para agregar el siguiente.'});
-      document.getElementById('wrap').insertBefore(okMsg, document.getElementById('wrap').firstChild);
-    } else {
-      var e = el('div',{class:'err', text:'No se pudo guardar. Intenta de nuevo.'});
-      wrap.insertBefore(e, wrap.firstChild);
-    }
-  }).catch(function(err){
-    console.error('Error guardando', err, 'tamaño KB:', sizeKB);
-    saveBtn.disabled = false;
-    saveBtn.textContent = 'Guardar registro';
-    var e = el('div',{class:'err', text:'No se pudo guardar (' + sizeKB + ' KB). Puede ser la señal en el punto. Vuelve a intentar, y si sigue fallando usa el botón de abajo para no perder lo que ya llenaste.'});
-    wrap.insertBefore(e, wrap.firstChild);
-    var copyBtn = el('button', {text:'\u{1F4CB} Copiar datos del registro (respaldo)'});
-    copyBtn.style.cssText = 'width:100%;margin-top:8px;padding:12px;border-radius:8px;border:1px solid #C8C2AF;background:#FCFBF8;font-weight:600;color:var(--ink-2);cursor:pointer;';
-    copyBtn.addEventListener('click', function(){
-      var resumen = 'EDS: ' + (m.nombreEds||'') + ' | Código: ' + (m.codigoEds||'') + ' | Fecha: ' + (m.fecha||'') + '\n\n' + JSON.stringify(m);
-      var doCopy = function(){
-        navigator.clipboard.writeText(resumen).then(function(){
-          copyBtn.textContent = '\u2713 Copiado — pégalo en un chat o nota para no perderlo';
-        }).catch(function(){
-          copyBtn.textContent = 'No se pudo copiar automáticamente. Toma screenshot de este formulario.';
-        });
-      };
-      doCopy();
+      setActiveTab('surtidor');
+    }).catch(function(){
+      btn.disabled = false;
+      alert('Guardado localmente, pero falló el envío a Google Sheets.');
+      state.form = { fecha:'', ciudad:'', nombreEds:'', codigoEds:'' };
+      markNew();
+      setActiveTab('surtidor');
     });
-    wrap.insertBefore(copyBtn, wrap.firstChild.nextSibling);
   });
 }
-function clearForm(){
-  if (state.tab === 'surtidor') state.surtidor = emptyModel();
-  else if (state.tab === 'totem') state.totem = emptyModel();
-  markNew();
-  renderTab();
-}
-var SURTIDOR_LABELS = [
-  ['fecha','Fecha'],['ciudad','Ciudad o municipio'],['nombreEds','Nombre EDS'],['codigoEds','Código EDS'],
-  ['cantSurtidores','Cantidad de surtidores'],['cantCaras','Caras por surtidor'],['cantProductos','Cantidad de productos'],
-  ['productosCara1','Productos ofrecidos - cara 1'],['productosCara2','Productos ofrecidos - cara 2'],
-  ['anchoCenefa','Ancho cenefa surtidor (cm)'],['altoSurtidor','Alto surtidor (cm)'],['profundidad','Profundidad surtidor (cm)'],
-  ['stickerSobrePlaca','Sticker licencia - sobre placa'],['stickerAUnLado','Sticker licencia - a un lado del surtidor'],
-  ['entorno_Viga_sobre_surtidor','Entorno - viga sobre surtidor'],['entorno_Pegado_a_columna','Entorno - pegado a columna'],
-  ['entorno_Mueble_de_productos_cerca','Entorno - mueble de productos cerca'],['entorno_Tanque_de_uria_pegado','Entorno - tanque de uria pegado'],
-  ['entorno_Techo','Entorno - techo'],
-  ['requisitosAltura','Requisitos de altura de trabajo'],
-  ['cuentaBanos','Cuenta con baños'],['cantBanos','Cantidad de baños'],['banoDama','Baño dama'],['banoCaballero','Baño caballero'],['banoFamiliar','Baño familiar'],
-  ['cantIslas','Cantidad de islas'],['islasCarro','Islas carro'],['islasMoto','Islas moto'],['islaGnv','Isla GNV'],
-  ['cuentaCajaLuz','Cuenta con caja de luz'],['cantCajaLuz','Cantidad caja de luz'],
-  ['observaciones','Observaciones']
-];
-var TOTEM_LABELS = [
-  ['fecha','Fecha'],['ciudad','Ciudad o municipio'],['nombreEds','Nombre EDS'],['codigoEds','Código EDS'],
-  ['alturaTotem','Altura tótem (cm)'],['modeloTotem','Modelo tótem'],['descripcionTipo','Descripción del tipo de tótem'],
-  ['cantTotem','Cantidad de tótem'],['cantCaras','Cantidad de caras'],['cantProductos','Cantidad de productos'],['tipoProducto','Tipo de producto'],
-  ['placaAncho','Placa nombre producto - ancho (cm)'],['placaAlto','Placa nombre producto - alto (cm)'],
-  ['recuadroAncho','Recuadro nombres productos - ancho (cm)'],['recuadroAlto','Recuadro nombres productos - alto (cm)'],
-  ['areaAncho','Área total aviso - ancho (cm)'],['areaAlto','Área total aviso - alto (cm)'],
-  ['requisitosAltura','Requisitos de trabajo en alturas'],['alturaPantalla','Altura piso a pantalla de precios (cm)'],['luzDomos','Luz de domos'],
-  ['obstaculos','Obstáculos para instalación'],
-  ['observaciones','Observaciones']
-];
-function formatValue(v){
-  if (v === undefined || v === null || v === '') return '—';
-  if (Array.isArray(v)) return v.length ? v.join(', ') : '—';
-  if (typeof v === 'object'){
-    var parts = Object.keys(v).filter(function(k){ return v[k]; }).map(function(k){ return k + ': ' + v[k]; });
-    return parts.length ? parts.join(' · ') : '—';
-  }
-  return String(v);
-}
-function countPhotos(r){
-  var n = 0;
-  var check = function(obj, key){ if (typeof obj[key] === 'string' && obj[key].indexOf('data:image') === 0) n++; };
-  if (r._type === 'surtidor'){
-    ['fotoBanos','fotoIslas','fotoGeneralEds'].forEach(function(k){ check(r,k); });
-    (r.surtidores || []).forEach(function(s){ check(s,'fotoCara1'); check(s,'fotoCara2'); });
-  } else {
-    check(r,'foto'); check(r,'foto2');
-  }
-  return n;
-}
-function renderDetail(record){
-  var wrap = document.getElementById('wrap');
-  wrap.innerHTML = '';
-  document.getElementById('footerBar').style.display = 'none';
-  var backBtn = el('button',{text:'\u2190 Volver a Registros'});
-  backBtn.style.cssText = 'margin-bottom:14px;padding:9px 14px;border-radius:7px;border:1px solid #D8D2C2;background:#fff;font-weight:600;color:#3C4A59;';
-  backBtn.addEventListener('click', function(){ state.tab = 'registros'; renderTab(); });
-  wrap.appendChild(backBtn);
-  var head = el('div',{class:'banner'});
-  head.textContent = (record._type === 'surtidor' ? 'Surtidor' : 'Tótem') + ' — ' + (record.nombreEds || '(sin nombre)');
-  wrap.appendChild(head);
-  var labels = record._type === 'surtidor' ? SURTIDOR_LABELS : TOTEM_LABELS;
-  var rows = labels.map(function(pair){
-    var row = el('div',{style:'display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid #EFEAD0;font-size:13.5px;'});
-    var lbl = el('span',{text:pair[1]}); lbl.style.color = '#8A8578'; lbl.style.flex = '0 0 55%';
-    var val = el('span',{text: formatValue(record[pair[0]])}); val.style.fontWeight = '600'; val.style.textAlign = 'right';
-    row.appendChild(lbl); row.appendChild(val);
-    return row;
-  });
-  wrap.appendChild(sectionEl(1, 'Datos del registro', rows));
-  if (record._type === 'surtidor'){
-    var pBody = [];
-    ['placasCara1','placasCara2'].forEach(function(key, i){
-      pBody.push(el('div',{class:'cara-title', text:'Placas cara ' + (i+1)}));
-      pBody.push(el('div',{class:'hint', text: 'Por producto: ' + formatValue(record[key])}));
-      var medidas = (record[key + '_medidas'] || []).filter(Boolean);
-      if (medidas.length){
-        pBody.push(el('div',{class:'hint', text: 'Medidas: ' + medidas.join(', ')}));
-      }
-    });
-    wrap.appendChild(sectionEl(2, 'Placas y medidas', pBody));
-  }
-  if (record._type === 'surtidor' && record.surtidores && record.surtidores.length){
-    var sBody = [];
-    record.surtidores.forEach(function(s, idx){
-      sBody.push(el('div',{class:'cara-title', text:'Surtidor ' + (idx+1) + ' — ' + (s.marca||'—') + ' ' + (s.modelo||'')}));
-      if (s.descripcion) sBody.push(el('div',{class:'hint', text: s.descripcion}));
-      if (typeof s.fotoCara1 === 'string' && s.fotoCara1.indexOf('data:image')===0){
-        sBody.push(el('div',{class:'subgrid-label', text:'Foto cara 1'}));
-        sBody.push(el('img',{class:'photo-preview', src:s.fotoCara1}));
-      }
-      if (typeof s.fotoCara2 === 'string' && s.fotoCara2.indexOf('data:image')===0){
-        sBody.push(el('div',{class:'subgrid-label', text:'Foto cara 2'}));
-        sBody.push(el('img',{class:'photo-preview', src:s.fotoCara2}));
-      }
-    });
-    wrap.appendChild(sectionEl(3, 'Surtidores y sus fotos', sBody));
-  }
-  var photoBody = [];
-  function addPhoto(val, label){
-    if (typeof val === 'string' && val.indexOf('data:image') === 0){
-      photoBody.push(el('div',{class:'subgrid-label', text:label}));
-      photoBody.push(el('img',{class:'photo-preview', src:val}));
-    }
-  }
-  if (record._type === 'surtidor'){
-    addPhoto(record.fotoBanos, 'Foto de los baños');
-    addPhoto(record.fotoIslas, 'Foto de las islas');
-    addPhoto(record.fotoGeneralEds, 'Foto general de la EDS');
-  } else {
-    addPhoto(record.foto, 'Foto tótem - cara 1');
-    addPhoto(record.foto2, 'Foto tótem - cara 2');
-  }
-  if (photoBody.length){
-    wrap.appendChild(sectionEl(record._type === 'surtidor' ? 4 : 2, 'Otras fotos', photoBody));
-  }
-  if (!photoBody.length && !(record.surtidores && record.surtidores.length)){
-    wrap.appendChild(el('div',{class:'hint', text:'Este registro no tiene fotos adjuntas.'}));
-  }
-}
+
 function renderRegistros(){
   var wrap = document.getElementById('wrap');
   wrap.innerHTML = '';
   document.getElementById('footerBar').style.display = 'none';
-  var toolbar = el('div',{class:'toolbar'});
-  var search = el('input',{type:'text', placeholder:'Buscar por EDS o código...'});
-  toolbar.appendChild(search);
-  wrap.appendChild(toolbar);
-  var exportRow = el('div',{class:'toolbar'});
-  var exportSurtidorBtn = el('button',{text:'Exportar Surtidores (Excel)'});
-  var exportTotemBtn = el('button',{text:'Exportar Tótems (Excel)'});
-  exportRow.appendChild(exportSurtidorBtn);
-  exportRow.appendChild(exportTotemBtn);
-  wrap.appendChild(exportRow);
+
+  wrap.appendChild(el('div',{class:'banner', text:'Historial de inspecciones completas'}));
   var listContainer = el('div',{});
   wrap.appendChild(listContainer);
-  var allRecords = [];
-  function renderList(filterText){
-    listContainer.innerHTML = '';
-    var filtered = allRecords.filter(function(r){
-      if (!filterText) return true;
-      var t = (r.nombreEds||'') + ' ' + (r.codigoEds||'');
-      return t.toLowerCase().indexOf(filterText.toLowerCase()) !== -1;
-    });
-    if (filtered.length === 0){
-      listContainer.appendChild(el('div',{class:'empty'}, [
-        el('div',{text:'\u{1F4CB}'}),
-        el('div',{text:'Aun no hay registros guardados.'})
-      ]));
+
+  window.storage.list('registro:').then(function(res){
+    var keys = (res && res.keys) || [];
+    if (!keys.length){
+      listContainer.appendChild(el('div',{class:'empty'},[el('div',{text:'\u{1F4CB}'}),el('div',{text:'No hay inspecciones guardadas.'})]));
       return;
     }
-    filtered.sort(function(a,b){ return (b._savedAt||'').localeCompare(a._savedAt||''); });
-    filtered.forEach(function(r){
-      var item = el('div',{class:'list-item'});
-      var top = el('div',{class:'list-item-top'});
-      top.appendChild(el('div',{class:'list-eds', text: r.nombreEds || '(sin nombre)'}));
-      top.appendChild(el('div',{class:'list-tag', text: r._type === 'surtidor' ? 'Surtidor' : 'Totem'}));
-      item.appendChild(top);
-      var meta = r.codigoEds ? ('Código: ' + r.codigoEds) : '';
-      meta += r.fecha ? ((meta?' · ':'') + r.fecha) : '';
-      meta += r.ciudad ? (' · ' + r.ciudad) : '';
-      var nFotos = countPhotos(r);
-      meta += ' · ' + nFotos + (nFotos === 1 ? ' foto' : ' fotos');
-      item.appendChild(el('div',{class:'list-meta', text: meta}));
-      var actions = el('div',{class:'list-actions'});
-      var verBtn = el('button',{text:'Ver'});
-      verBtn.addEventListener('click', function(){ renderDetail(r); });
-      var editBtn = el('button',{text:'Editar'});
-      editBtn.addEventListener('click', function(){
-        var recordClone = JSON.parse(JSON.stringify(r));
-        if (recordClone._type === 'surtidor'){ state.surtidor = recordClone; state.tab = 'surtidor'; }
-        else { state.totem = recordClone; state.tab = 'totem'; }
-        markSaved();
-        setActiveTab(state.tab);
+    keys.forEach(function(k){
+      window.storage.get(k).then(function(item){
+        var r = JSON.parse(item.value);
+        var card = el('div',{class:'list-item'});
+        card.appendChild(el('div',{class:'list-eds', text: r.nombreEds + ' (' + r.fecha + ')'}));
+        card.appendChild(el('div',{class:'list-meta', text: 'Código: ' + (r.codigoEds||'N/A') + ' · ' + (r.ciudad||'')}));
+        listContainer.appendChild(card);
       });
-      var delBtn = el('button',{text:'Eliminar'});
-      delBtn.addEventListener('click', function(){
-        window.storage.delete('registro:' + r._id).then(function(){
-          loadAll();
-        }).catch(function(err){ console.error(err); });
-      });
-      actions.appendChild(verBtn);
-      actions.appendChild(editBtn);
-      actions.appendChild(delBtn);
-      item.appendChild(actions);
-      listContainer.appendChild(item);
     });
-  }
-  function exportSurtidorCsv(){
-    var records = allRecords.filter(function(r){ return r._type === 'surtidor'; });
-    if (records.length === 0){ alert('No hay registros de Surtidor guardados todavía.'); return; }
-    var headers = SURTIDOR_LABELS.map(function(p){ return p[1]; })
-      .concat(['Detalle de surtidores (marca / modelo / descripción)', 'Placas cara 1 por producto', 'Medidas placas cara 1', 'Placas cara 2 por producto', 'Medidas placas cara 2', 'Cantidad de fotos adjuntas']);
-    var rows = [headers];
-    records.forEach(function(r){
-      var row = SURTIDOR_LABELS.map(function(p){ return formatValue(r[p[0]]); });
-      var detalle = (r.surtidores||[]).map(function(s, idx){
-        return 'Surtidor ' + (idx+1) + ': ' + (s.marca||'—') + ' / ' + (s.modelo||'—') + ' / ' + (s.descripcion||'—');
-      }).join(' | ');
-      row.push(detalle);
-      row.push(formatValue(r.placasCara1));
-      row.push((r.placasCara1_medidas||[]).filter(Boolean).join(', ') || '—');
-      row.push(formatValue(r.placasCara2));
-      row.push((r.placasCara2_medidas||[]).filter(Boolean).join(', ') || '—');
-      row.push(countPhotos(r) + ' (ver fotos en la app: Registros > Ver)');
-      rows.push(row);
-    });
-    downloadXlsx(rows, 'Surtidores', 'registros_surtidor.xlsx');
-  }
-  function exportTotemCsv(){
-    var records = allRecords.filter(function(r){ return r._type === 'totem'; });
-    if (records.length === 0){ alert('No hay registros de Tótem guardados todavía.'); return; }
-    var headers = TOTEM_LABELS.map(function(p){ return p[1]; }).concat(['Cantidad de fotos adjuntas']);
-    var rows = [headers];
-    records.forEach(function(r){
-      var row = TOTEM_LABELS.map(function(p){ return formatValue(r[p[0]]); });
-      row.push(countPhotos(r) + ' (ver fotos en la app: Registros > Ver)');
-      rows.push(row);
-    });
-    downloadXlsx(rows, 'Totem', 'registros_totem.xlsx');
-  }
-  function downloadXlsx(rowsArray, sheetName, filename){
-    if (typeof XLSX === 'undefined'){
-      alert('No se pudo cargar el generador de Excel. Revisa tu conexión a internet e intenta de nuevo.');
-      return;
-    }
-    var ws = XLSX.utils.aoa_to_sheet(rowsArray);
-    var colWidths = rowsArray[0].map(function(h, i){
-      var maxLen = h.length;
-      rowsArray.forEach(function(r){ if (r[i] && String(r[i]).length > maxLen) maxLen = String(r[i]).length; });
-      return { wch: Math.min(Math.max(maxLen + 2, 10), 45) };
-    });
-    ws['!cols'] = colWidths;
-    var wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, sheetName);
-    XLSX.writeFile(wb, filename);
-  }
-  search.addEventListener('input', function(){ renderList(search.value); });
-  exportSurtidorBtn.addEventListener('click', exportSurtidorCsv);
-  exportTotemBtn.addEventListener('click', exportTotemCsv);
-  function loadAll(){
-    listContainer.innerHTML = '<div class="empty"><div>...</div><div>Cargando registros...</div></div>';
-    window.storage.list('registro:').then(function(res){
-      var keys = (res && res.keys) || [];
-      if (keys.length === 0){ allRecords = []; renderList(search.value); return; }
-      var promises = keys.map(function(k){
-        return window.storage.get(k).then(function(r){
-          try { return JSON.parse(r.value); } catch(e){ return null; }
-        }).catch(function(){ return null; });
-      });
-      Promise.all(promises).then(function(results){
-        allRecords = results.filter(Boolean);
-        renderList(search.value);
-      });
-    }).catch(function(err){
-      console.error(err);
-      listContainer.innerHTML = '';
-      listContainer.appendChild(el('div',{class:'empty'},[
-        el('div',{text:'\u26A0'}),
-        el('div',{text:'No se pudieron cargar los registros.'})
-      ]));
-    });
-  }
-  loadAll();
+  });
 }
+
 function renderTab(){
+  var btn = document.getElementById('btnNextOrSave');
   document.getElementById('footerBar').style.display = 'flex';
-  if (state.tab === 'surtidor') renderSurtidor();
-  else if (state.tab === 'totem') renderTotem();
-  else renderRegistros();
+
+  if (state.tab === 'surtidor'){
+    btn.textContent = 'Continuar a Tótem \u2192';
+    renderSurtidor();
+  } else if (state.tab === 'totem'){
+    btn.textContent = 'Guardar e Inspección Completa \u2713';
+    renderTotem();
+  } else {
+    renderRegistros();
+  }
 }
+
 function setActiveTab(tab){
   state.tab = tab;
   Array.prototype.forEach.call(document.querySelectorAll('.tab'), function(t){
     t.classList.toggle('active', t.getAttribute('data-tab') === tab);
   });
-  var m = tab === 'surtidor' ? state.surtidor : (tab === 'totem' ? state.totem : null);
-  if (m && m._savedAt) markSaved();
-  else if (tab !== 'registros') markNew();
   renderTab();
 }
+
 document.getElementById('mainTabs').addEventListener('click', function(e){
   var tab = e.target.getAttribute('data-tab');
   if (tab) setActiveTab(tab);
 });
-document.getElementById('btnSave').addEventListener('click', saveRecord);
-document.getElementById('btnClear').addEventListener('click', clearForm);
-function updateOfflineBanner(){
-  var banner = document.getElementById('offlineBanner');
-  banner.style.display = (navigator.onLine === false) ? 'block' : 'none';
-}
-window.addEventListener('online', updateOfflineBanner);
-window.addEventListener('offline', updateOfflineBanner);
-updateOfflineBanner();
+
+document.getElementById('btnNextOrSave').addEventListener('click', function(){
+  if (state.tab === 'surtidor'){
+    if (!state.form.nombreEds || !state.form.fecha){
+      alert('Por favor completa Nombre de EDS y Fecha antes de continuar.');
+      return;
+    }
+    setActiveTab('totem');
+  } else if (state.tab === 'totem'){
+    saveUnifiedRecord();
+  }
+});
+
+document.getElementById('btnClear').addEventListener('click', function(){
+  if (confirm('¿Deseas limpiar todos los campos del formulario?')){
+    state.form = { fecha:'', ciudad:'', nombreEds:'', codigoEds:'' };
+    markNew();
+    renderTab();
+  }
+});
+
 renderTab();
 })();
 </script>

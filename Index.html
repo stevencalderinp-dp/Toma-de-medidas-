@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Toma de Medidas — Digital Printing S.A.S.</title>
+<style>
+  :root{
+    --ink:#1B2733;
+    --ink-2:#3C4A59;
+    --paper:#FAF8F3;
+    --paper-2:#F0ECE2;
+    --line:#D8D2C2;
+    --accent:#D9720A;
+    --accent-dark:#A9560A;
+    --ok:#2F6B4F;
+    --ok-bg:#E6F1EB;
+    --danger:#B23A2E;
+    --tag:#EFE6D2;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;}
+  .app{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    background:var(--paper);
+    color:var(--ink);
+    min-height:100vh;
+    padding-bottom:100px;
+  }
+  .topbar{
+    background:var(--ink);
+    color:var(--paper);
+    padding:14px 16px;
+    position:sticky;
+    top:0;
+    z-index:20;
+  }
+  .topbar-row{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+  .brand{font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#B9C2CC;margin:0 0 2px;}
+  .title{font-size:17px;font-weight:700;margin:0;}
+  .stamp{
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+    font-size:11px;
+    padding:4px 9px;
+    border-radius:3px;
+    border:1px solid #4A5A6B;
+    color:#B9C2CC;
+    white-space:nowrap;
+  }
+  .stamp.dirty{border-color:var(--accent);color:var(--accent);}
+  .stamp.saved{border-color:var(--ok);color:#8FD1AE;}
+  .tabs{display:flex;gap:0;margin-top:12px;background:#28323D;border-radius:8px;padding:3px;}
+  .tab{
+    flex:1;text-align:center;padding:9px 4px;font-size:13px;font-weight:600;
+    color:#9AA6B2;border-radius:6px;cursor:pointer;user-select:none;
+  }
+  .tab.active{background:var(--paper);color:var(--ink);}
+  .wrap{padding:16px;}
+  .section{
+    background:#fff;border:1px solid var(--line);border-radius:10px;
+    margin-bottom:14px;overflow:hidden;
+  }
+  .section-head{
+    background:var(--paper-2);padding:10px 14px;border-bottom:1px solid var(--line);
+    font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;
+    color:var(--ink-2);display:flex;align-items:center;gap:8px;
+  }
+  .section-head .n{
+    width:18px;height:18px;border-radius:50%;background:var(--ink);color:var(--paper);
+    font-size:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .section-body{padding:14px;}
+  .field{margin-bottom:12px;}
+  .field:last-child{margin-bottom:0;}
+  .field label{
+    display:block;font-size:12.5px;font-weight:600;color:var(--ink-2);margin-bottom:5px;
+  }
+  .field .hint{font-weight:400;color:#8A8578;font-size:11px;}
+  .hint{font-size:12.5px;color:#8A8578;margin-bottom:10px;}
+  input[type=text],input[type=number],input[type=date],input[type=time],select,textarea{
+    width:100%;padding:10px 11px;border:1px solid #C8C2AF;border-radius:7px;
+    font-size:15px;background:#FCFBF8;color:var(--ink);font-family:inherit;
+  }
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);background:#fff;}
+  textarea{min-height:64px;resize:vertical;}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+  .choice-group{display:flex;gap:8px;flex-wrap:wrap;}
+  .choice{
+    padding:9px 14px;border:1px solid #C8C2AF;border-radius:7px;font-size:13.5px;
+    cursor:pointer;user-select:none;background:#FCFBF8;color:var(--ink-2);font-weight:600;
+  }
+  .choice.on{background:var(--ink);border-color:var(--ink);color:#fff;}
+  .check-grid{display:flex;flex-wrap:wrap;gap:8px;}
+  .check-pill{
+    padding:8px 12px;border:1px solid #C8C2AF;border-radius:20px;font-size:13px;
+    cursor:pointer;user-select:none;background:#FCFBF8;color:var(--ink-2);font-weight:600;
+  }
+  .check-pill.on{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .subgrid-label{font-size:11px;font-weight:700;color:#8A8578;text-transform:uppercase;margin:10px 0 6px;letter-spacing:0.03em;}
+  .cara-block{border:1px dashed var(--line);border-radius:8px;padding:10px;margin-bottom:10px;}
+  .cara-block .cara-title{font-size:12px;font-weight:700;color:var(--ink-2);margin-bottom:8px;}
+  .photo-btn{
+    display:flex;align-items:center;justify-content:center;gap:8px;
+    border:1.5px dashed #C8C2AF;border-radius:8px;padding:16px;cursor:pointer;
+    color:var(--ink-2);font-size:13.5px;font-weight:600;background:#FCFBF8;
+  }
+  .photo-preview{width:100%;border-radius:8px;margin-top:8px;display:block;}
+  .footer-bar{
+    position:sticky;bottom:0;background:var(--paper);border-top:1px solid var(--line);
+    padding:12px 16px;display:flex;gap:10px;z-index:15;
+  }
+  .btn{
+    flex:1;padding:14px;border-radius:9px;border:none;font-size:15px;font-weight:700;
+    cursor:pointer;
+  }
+  .btn-primary{background:var(--accent);color:#fff;}
+  .btn-primary:active{background:var(--accent-dark);}
+  .btn-secondary{background:#fff;border:1px solid var(--line);color:var(--ink-2);}
+  .err{color:var(--danger);font-size:12px;margin-top:4px;}
+  .list-item{
+    background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:10px;
+  }
+  .list-item-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
+  .list-eds{font-size:15px;font-weight:700;}
+  .list-tag{
+    font-size:10.5px;font-weight:700;text-transform:uppercase;background:var(--tag);
+    color:var(--accent-dark);padding:3px 8px;border-radius:4px;white-space:nowrap;
+  }
+  .list-meta{font-size:12.5px;color:#8A8578;margin-top:3px;}
+  .list-actions{display:flex;gap:8px;margin-top:10px;}
+  .list-actions button{
+    flex:1;padding:8px;font-size:12.5px;font-weight:600;border-radius:6px;
+    border:1px solid var(--line);background:#FCFBF8;color:var(--ink-2);cursor:pointer;
+  }
+  .empty{
+    text-align:center;padding:50px 20px;color:#9A9384;
+  }
+  .empty div:first-child{font-size:32px;margin-bottom:8px;}
+  .toolbar{display:flex;gap:8px;margin-bottom:14px;}
+  .toolbar input{flex:1;}
+  .toolbar button{
+    padding:10px 14px;border-radius:7px;border:1px solid var(--line);background:#fff;
+    font-size:13px;font-weight:600;color:var(--ink-2);cursor:pointer;white-space:nowrap;
+  }
+  .banner{
+    background:var(--ok-bg);color:var(--ok);border-radius:8px;padding:10px 12px;
+    font-size:13px;font-weight:600;margin-bottom:14px;display:flex;align-items:center;gap:8px;
+  }
+  .req{color:var(--danger);}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <div class="topbar">
+    <div class="topbar-row">
+      <div>
+        <p class="brand">Digital Printing S.A.S.</p>
+        <h1 class="title">Toma de medidas</h1>
+      </div>
+      <span class="stamp" id="statusStamp">nuevo</span>
+    </div>
+    <div class="tabs" id="mainTabs">
+      <div class="tab active" data-tab="surtidor">Surtidor</div>
+      <div class="tab" data-tab="totem">Totem</div>
+      <div class="tab" data-tab="registros">Registros</div>
+    </div>
+  </div>
+  <div id="offlineBanner" style="display:none;background:#B23A2E;color:#fff;text-align:center;padding:7px;font-size:12.5px;font-weight:600;">
+    Sin conexión — conéctate a wifi o mejora la señal antes de guardar
+  </div>
+  <div class="wrap" id="wrap"></div>
+  <div class="footer-bar" id="footerBar">
+    <button class="btn btn-secondary" id="btnClear">Limpiar</button>
+    <button class="btn btn-primary" id="btnSave">Guardar registro</button>
+  </div>
+</div>
+<script>
+(function(){
+window.storage = {
+  get: function(key) {
+    return new Promise(function(resolve, reject) {
+      try {
+        var val = localStorage.getItem(key);
+        resolve(val ? { value: val } : null);
+      } catch (e) { reject(e); }
+    });
+  },
+  set: function(key, value) {
+    return new Promise(function(resolve, reject) {
+      try {
+        localStorage.setItem(key, value);
+        resolve(true);
+      } catch (e) { reject(e); }
+    });
+  },
+  delete: function(key) {
+    return new Promise(function(resolve, reject) {
+      try {
+        localStorage.removeItem(key);
+        resolve(true);
+      } catch (e) { reject(e); }
+    });
+  },
+  list: function(prefix) {
+    return new Promise(function(resolve, reject) {
+      try {
+        var keys = [];
+        for (var i = 0; i < localStorage.length; i++) {
+          var k = localStorage.key(i);
+          if (k && k.indexOf(prefix) === 0) keys.push(k);
+        }
+        resolve({ keys: keys });
+      } catch (e) { reject(e); }
+    });
+  }
+};
+
+var state = {
+  tab: 'surtidor',
+  surtidor: {},
+  totem: {},
+  photoSurtidor: null,
+  photoTotem: null,
+  dirty: false
+};
+var PRODUCTOS = ['CTE','EXTRA','DIESEL'];
+var PRODUCTOS_TOTEM = ['CTE','EXTRA','DIESEL','GNV'];
+var MARCAS_SURTIDOR = ['WAYNE','GILBARCO'];
+var MODELOS_SURTIDOR = [
+  'WAYNE H5000',
+  'WAYNE H4000',
+  'WAYNE HELIX H1000',
+  'WAYNE H1000',
+  'WAYNE ENCORE 500',
+  'WAYNE ENCORE 300',
+  'WAYNE ENCORE 500SD',
+  'GILBARCO PRIME PHD 2422-D',
+  'GILBARCO PRIME PHD 4822-D',
+  'GILBARCO ADVANTAGE'
+];
+function el(tag, attrs, children){
+  var e = document.createElement(tag);
+  attrs = attrs || {};
+  for (var k in attrs){
+    if (k === 'class') e.className = attrs[k];
+    else if (k === 'text') e.textContent = attrs[k];
+    else e.setAttribute(k, attrs[k]);
+  }
+  (children||[]).forEach(function(c){ if(c) e.appendChild(c); });
+  return e;
+}
+function field(labelText, inputEl, required){
+  var f = el('div', {class:'field'});
+  var lbl = el('label', {});
+  lbl.textContent = labelText;
+  if (required) { var r = el('span',{class:'req',text:' *'}); lbl.appendChild(r); }
+  f.appendChild(lbl);
+  f.appendChild(inputEl);
+  return f;
+}
+function textInput(model, key, placeholder, type){
+  var i = el('input', {type: type||'text', placeholder: placeholder||''});
+  i.value = model[key] || '';
+  i.addEventListener('input', function(){ model[key] = i.value; markDirty(); });
+  return i;
+}
+function textArea(model, key, placeholder){
+  var t = el('textarea', {placeholder: placeholder||''});
+  t.value = model[key] || '';
+  t.addEventListener('input', function(){ model[key] = t.value; markDirty(); });
+  return t;
+}
+function selectInput(model, key, options){
+  var s = el('select', {});
+  s.appendChild(el('option', {value:'', text:'Selecciona...'}));
+  options.forEach(function(o){
+    var opt = el('option', {value:o, text:o});
+    if (model[key] === o) opt.selected = true;
+    s.appendChild(opt);
+  });
+  s.addEventListener('change', function(){ model[key] = s.value; markDirty(); });
+  return s;
+}
+function choiceGroup(model, key, options){
+  var g = el('div', {class:'choice-group'});
+  options.forEach(function(o){
+    var c = el('div', {class:'choice' + (model[key]===o ? ' on':'')});
+    c.textContent = o;
+    c.addEventListener('click', function(){
+      model[key] = o;
+      markDirty();
+      Array.prototype.forEach.call(g.children, function(ch){ ch.classList.remove('on'); });
+      c.classList.add('on');
+    });
+    g.appendChild(c);
+  });
+  return g;
+}
+function checkPillGroup(model, key, options){
+  if (!model[key]) model[key] = [];
+  var g = el('div', {class:'check-grid'});
+  options.forEach(function(o){
+    var on = model[key].indexOf(o) !== -1;
+    var c = el('div', {class:'check-pill' + (on?' on':'')});
+    c.textContent = o;
+    c.addEventListener('click', function(){
+      var idx = model[key].indexOf(o);
+      if (idx === -1){ model[key].push(o); c.classList.add('on'); }
+      else { model[key].splice(idx,1); c.classList.remove('on'); }
+      markDirty();
+    });
+    g.appendChild(c);
+  });
+  return g;
+}
+function sectionEl(num, title, bodyChildren){
+  var s = el('div', {class:'section'});
+  var head = el('div', {class:'section-head'});
+  head.appendChild(el('span', {class:'n', text:String(num)}));
+  var t = document.createElement('span');
+  t.textContent = title;
+  head.appendChild(t);
+  var body = el('div', {class:'section-body'}, bodyChildren);
+  s.appendChild(head);
+  s.appendChild(body);
+  return s;
+}
+function photoField(model, key, previewSlot){
+  var wrapper = el('div', {class:'field'});
+  wrapper.appendChild(el('label', {text:'Imagen de referencia'}));
+  var btn = el('div', {class:'photo-btn'});
+  btn.innerHTML = '&#128247; Tomar o adjuntar foto';
+  var input = el('input', {type:'file', accept:'image/*', capture:'environment', style:'display:none'});
+  var img = el('img', {class:'photo-preview'});
+  var isDataUrl = typeof model[key] === 'string' && model[key].indexOf('data:image') === 0;
+  img.style.display = isDataUrl ? 'block' : 'none';
+  if (isDataUrl) img.src = model[key];
+  var savedNote = el('div', {class:'hint', text:'Foto guardada (cargando vista previa...)'});
+  savedNote.style.display = (model[key] === true) ? 'block' : 'none';
+  btn.addEventListener('click', function(){ input.click(); });
+  input.addEventListener('change', function(e){
+    var file = e.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(ev){
+      var image = new Image();
+      image.onload = function(){
+        var canvas = document.createElement('canvas');
+        var maxW = 400;
+        var scale = Math.min(1, maxW / image.width);
+        canvas.width = image.width * scale;
+        canvas.height = image.height * scale;
+        var ctx = canvas.getContext('2d');
+        ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+        var dataUrl = canvas.toDataURL('image/jpeg', 0.45);
+        model[key] = dataUrl;
+        img.src = dataUrl;
+        img.style.display = 'block';
+        savedNote.style.display = 'none';
+        markDirty();
+      };
+      image.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+  wrapper.appendChild(btn);
+  wrapper.appendChild(input);
+  wrapper.appendChild(savedNote);
+  wrapper.appendChild(img);
+  return wrapper;
+}
+function syncSurtidoresArray(m){
+  var n = parseInt(m.cantSurtidores, 10);
+  if (isNaN(n) || n < 0) n = 0;
+  if (n > 20) n = 20;
+  if (!m.surtidores) m.surtidores = [];
+  while (m.surtidores.length < n) m.surtidores.push({});
+  while (m.surtidores.length > n) m.surtidores.pop();
+}
+function surtidorCountInput(m){
+  var i = el('input', {type:'number', min:'0'});
+  i.value = m.cantSurtidores || '';
+  i.addEventListener('change', function(){
+    m.cantSurtidores = i.value;
+    syncSurtidoresArray(m);
+    markDirty();
+    renderSurtidor();
+  });
+  return i;
+}
+function surtidoresRepeatingBlock(m){
+  syncSurtidoresArray(m);
+  var container = el('div',{});
+  if (m.surtidores.length === 0){
+    container.appendChild(el('div',{class:'hint', text:'Indica la cantidad de surtidores arriba para habilitar sus fichas.'}));
+    return container;
+  }
+  m.surtidores.forEach(function(s, idx){
+    var block = el('div',{class:'cara-block'});
+    block.appendChild(el('div',{class:'cara-title', text:'Surtidor ' + (idx+1)}));
+    block.appendChild(field('Marca', selectInput(s,'marca',MARCAS_SURTIDOR)));
+    block.appendChild(field('Modelo', selectInput(s,'modelo',MODELOS_SURTIDOR)));
+    block.appendChild(field('Descripción del surtidor', textArea(s,'descripcion',
+      'Ej: Dispensador de 4 productos, 8 mangueras, 4 visores')));
+    block.appendChild(photoField(s, 'fotoCara1', null));
+    var lbl1 = block.querySelector('.field:last-child label');
+    if (lbl1) lbl1.textContent = 'Foto cara 1';
+    block.appendChild(photoField(s, 'fotoCara2', null));
+    var lbl2 = block.querySelector('.field:last-child label');
+    if (lbl2) lbl2.textContent = 'Foto cara 2';
+    container.appendChild(block);
+  });
+  return container;
+}
+function labeledPhoto(model, key, labelText){
+  var wrapper = photoField(model, key, null);
+  var lbl = wrapper.querySelector('label');
+  if (lbl) lbl.textContent = labelText;
+  return wrapper;
+}
+function placasPorProductoBlock(m, key, title){
+  if (!m[key]) m[key] = {};
+  var block = el('div',{class:'cara-block'});
+  block.appendChild(el('div',{class:'cara-title', text:title}));
+  PRODUCTOS.forEach(function(p){
+    var row = el('div',{style:'display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;'});
+    var lbl = el('span',{text:p});
+    lbl.style.fontSize = '13.5px';
+    lbl.style.fontWeight = '600';
+    lbl.style.color = 'var(--ink-2)';
+    var input = el('input',{type:'number', min:'0'});
+    input.style.width = '80px';
+    input.value = m[key][p] || '';
+    input.addEventListener('change', function(){
+      m[key][p] = input.value;
+      markDirty();
+      renderSurtidor();
+    });
+    row.appendChild(lbl);
+    row.appendChild(input);
+    block.appendChild(row);
+  });
+  var total = PRODUCTOS.reduce(function(sum,p){ return sum + (parseInt(m[key][p],10)||0); }, 0);
+  block.appendChild(el('div',{class:'hint', text:'Total placas: ' + total}));
+  var mkey = key + '_medidas';
+  if (!m[mkey]) m[mkey] = [];
+  while (m[mkey].length < total) m[mkey].push('');
+  while (m[mkey].length > total) m[mkey].pop();
+  if (total > 0){
+    block.appendChild(el('div',{class:'subgrid-label', text:'Medida de cada placa (cm)'}));
+    m[mkey].forEach(function(val, idx){
+      var mWrap = el('div', {style:'margin-bottom:8px;'});
+      mWrap.appendChild(el('label',{text:'Placa ' + (idx+1), style:'font-size:12px;font-weight:600;color:var(--ink-2);margin-bottom:3px;display:block;'}));
+      var mInput = el('input',{type:'text', placeholder:'Ej: 20x15'});
+      mInput.value = val;
+      mInput.addEventListener('input', function(){
+        m[mkey][idx] = mInput.value;
+        markDirty();
+      });
+      mWrap.appendChild(mInput);
+      block.appendChild(mWrap);
+    });
+  }
+  return block;
+}
+function markDirty(){
+  state.dirty = true;
+  var stamp = document.getElementById('statusStamp');
+  stamp.textContent = 'sin guardar';
+  stamp.className = 'stamp dirty';
+}
+function markSaved(){
+  state.dirty = false;
+  var stamp = document.getElementById('statusStamp');
+  stamp.textContent = 'guardado';
+  stamp.className = 'stamp saved';
+}
+function markNew(){
+  state.dirty = false;
+  var stamp = document.getElementById('statusStamp');
+  stamp.textContent = 'nuevo';
+  stamp.className = 'stamp';
+}
+function renderSurtidor(){
+  var m = state.surtidor;
+  var wrap = document.getElementById('wrap');
+  wrap.innerHTML = '';
+  wrap.appendChild(sectionEl(1, 'Datos generales', [
+    (function(){var d=el('div',{class:'row2'});
+      d.appendChild(field('Fecha', textInput(m,'fecha','','date'), true));
+      d.appendChild(field('Ciudad o municipio', textInput(m,'ciudad','Ej. Barranquilla')));
+      return d;})(),
+    field('Nombre EDS', textInput(m,'nombreEds','Nombre de la estación'), true),
+    field('Código EDS', textInput(m,'codigoEds',''))
+  ]));
+  wrap.appendChild(sectionEl(2, 'Cantidades', [
+    (function(){var d=el('div',{class:'row3'});
+      d.appendChild(field('Cant. surtidores', surtidorCountInput(m)));
+      d.appendChild(field('Caras por surtidor', textInput(m,'cantCaras','','number')));
+      d.appendChild(field('Cant. productos', textInput(m,'cantProductos','','number')));
+      return d;})()
+  ]));
+  wrap.appendChild(sectionEl(3, 'Surtidores de esta EDS', [
+    el('div',{class:'hint', text:'Marca, modelo y fotos pueden variar por cada surtidor.'}),
+    surtidoresRepeatingBlock(m)
+  ]));
+  wrap.appendChild(sectionEl(4, 'Productos ofrecidos por cara', [
+    (function(){var b=el('div',{class:'cara-block'});
+      b.appendChild(el('div',{class:'cara-title',text:'Cara surtidor 1'}));
+      b.appendChild(checkPillGroup(m,'productosCara1',PRODUCTOS));
+      return b;})(),
+    (function(){var b=el('div',{class:'cara-block'});
+      b.appendChild(el('div',{class:'cara-title',text:'Cara surtidor 2'}));
+      b.appendChild(checkPillGroup(m,'productosCara2',PRODUCTOS));
+      return b;})()
+  ]));
+  wrap.appendChild(sectionEl(5, 'Medidas (cm)', [
+    (function(){var d=el('div',{class:'row2'});
+      d.appendChild(field('Ancho cenefa surtidor', textInput(m,'anchoCenefa','','number')));
+      d.appendChild(field('Alto surtidor', textInput(m,'altoSurtidor','','number')));
+      return d;})(),
+    field('Profundidad surtidor', textInput(m,'profundidad','','number')),
+    el('div',{class:'hint', text:'Indica cuántas placas hay de cada producto en cada cara, y la medida de cada una.'}),
+    placasPorProductoBlock(m,'placasCara1','Placas cara 1'),
+    placasPorProductoBlock(m,'placasCara2','Placas cara 2')
+  ]));
+  wrap.appendChild(sectionEl(6, 'Ubicación sticker licencia', [
+    field('Sobre placa', choiceGroup(m,'stickerSobrePlaca',['SI','NO'])),
+    field('A un lado del surtidor', choiceGroup(m,'stickerAUnLado',['SI','NO']))
+  ]));
+  wrap.appendChild(sectionEl(7, 'Entorno del surtidor', [
+    (function(){var g=el('div',{});
+      ['Viga sobre surtidor','Pegado a columna','Mueble de productos cerca','Tanque de uria pegado','Techo'].forEach(function(label){
+        var key = 'entorno_' + label.replace(/\s+/g,'_');
+        g.appendChild(field(label, choiceGroup(m, key, ['SI','NO'])));
+      });
+      return g;})()
+  ]));
+  wrap.appendChild(sectionEl(8, 'Requisitos de altura de trabajo', [
+    checkPillGroup(m,'requisitosAltura',['ESCALERA DOBLE TIRO','ESCALERA MULTIPROPOSITO','ESCALERA TELESCOPICA'])
+  ]));
+  wrap.appendChild(sectionEl(9, 'Información general de la EDS', [
+    field('Cuenta con baños', choiceGroup(m,'cuentaBanos',['SI','NO'])),
+    (function(){var d=el('div',{class:'row3'});
+      d.appendChild(field('Cant. baños', textInput(m,'cantBanos','','number')));
+      d.appendChild(field('Baño dama', textInput(m,'banoDama','','number')));
+      d.appendChild(field('Baño caballero', textInput(m,'banoCaballero','','number')));
+      return d;})(),
+    field('Baño familiar', textInput(m,'banoFamiliar','','number')),
+    labeledPhoto(m,'fotoBanos','Foto de los baños'),
+    (function(){var d=el('div',{class:'row3'});
+      d.appendChild(field('Cant. islas', textInput(m,'cantIslas','','number')));
+      d.appendChild(field('Islas carro', textInput(m,'islasCarro','','number')));
+      d.appendChild(field('Islas moto', textInput(m,'islasMoto','','number')));
+      return d;})(),
+    field('Isla GNV', textInput(m,'islaGnv','','number')),
+    labeledPhoto(m,'fotoIslas','Foto donde se vean claramente las islas'),
+    field('Cuenta con caja de luz', choiceGroup(m,'cuentaCajaLuz',['SI','NO'])),
+    field('Cant. caja de luz', textInput(m,'cantCajaLuz','','number')),
+    labeledPhoto(m,'fotoGeneralEds','Foto general de la EDS')
+  ]));
+  wrap.appendChild(sectionEl(10, 'Observaciones', [
+    textArea(m,'observaciones','Notas adicionales de la inspección...')
+  ]));
+}
+function renderTotem(){
+  var m = state.totem;
+  var wrap = document.getElementById('wrap');
+  wrap.innerHTML = '';
+  wrap.appendChild(sectionEl(1, 'Datos generales', [
+    (function(){var d=el('div',{class:'row2'});
+      d.appendChild(field('Fecha', textInput(m,'fecha','','date'), true));
+      d.appendChild(field('Ciudad o municipio', textInput(m,'ciudad','')));
+      return d;})(),
+    field('Nombre EDS', textInput(m,'nombreEds',''), true),
+    field('Código EDS', textInput(m,'codigoEds',''))
+  ]));
+  wrap.appendChild(sectionEl(2, 'Tipo de tótem', [
+    field('Altura tótem (cm)', textInput(m,'alturaTotem','','number')),
+    field('Modelo tótem', textInput(m,'modeloTotem','')),
+    field('Descripción del tipo de tótem', textArea(m,'descripcionTipo','')),
+    labeledPhoto(m,'foto','Foto tótem - cara 1'),
+    labeledPhoto(m,'foto2','Foto tótem - cara 2')
+  ]));
+  wrap.appendChild(sectionEl(3, 'Cantidades y producto', [
+    (function(){var d=el('div',{class:'row3'});
+      d.appendChild(field('Cant. tótem', textInput(m,'cantTotem','','number')));
+      d.appendChild(field('Cant. caras', textInput(m,'cantCaras','','number')));
+      d.appendChild(field('Cant. productos', textInput(m,'cantProductos','','number')));
+      return d;})(),
+    field('Tipo de producto', checkPillGroup(m,'tipoProducto',PRODUCTOS_TOTEM))
+  ]));
+  wrap.appendChild(sectionEl(4, 'Medidas del aviso (cm)', [
+    el('div',{class:'subgrid-label',text:'Placa nombre producto'}),
+    (function(){var d=el('div',{class:'row2'});
+      d.appendChild(field('Ancho', textInput(m,'placaAncho','','number')));
+      d.appendChild(field('Alto', textInput(m,'placaAlto','','number')));
+      return d;})(),
+    el('div',{class:'subgrid-label',text:'Recuadro nombres productos'}),
+    (function(){var d=el('div',{class:'row2'});
+      d.appendChild(field('Ancho', textInput(m,'recuadroAncho','','number')));
+      d.appendChild(field('Alto', textInput(m,'recuadroAlto','','number')));
+      return d;})(),
+    el('div',{class:'subgrid-label',text:'Área total aviso nombre proyecto'}),
+    (function(){var d=el('div',{class:'row2'});
+      d.appendChild(field('Ancho', textInput(m,'areaAncho','','number')));
+      d.appendChild(field('Alto', textInput(m,'areaAlto','','number')));
+      return d;})()
+  ]));
+  wrap.appendChild(sectionEl(5, 'Requisitos de trabajo en alturas', [
+    checkPillGroup(m,'requisitosAltura',['ESCALERA','ANDAMIO CERTIFICADO','MANLIFT']),
+    field('Altura de piso a zona de pantalla de precios (cm)', textInput(m,'alturaPantalla','','number')),
+    field('Luz de domos', choiceGroup(m,'luzDomos',['ENCIENDEN','NO ENCIENDE']))
+  ]));
+  wrap.appendChild(sectionEl(6, 'Obstáculos para instalación', [
+    checkPillGroup(m,'obstaculos',['JARDINERA','CARRETERA','TECHO','OTROS'])
+  ]));
+  wrap.appendChild(sectionEl(7, 'Observaciones', [
+    textArea(m,'observaciones','Notas adicionales de la inspección...')
+  ]));
+}
+function emptyModel(){
+  return {};
+}
+function currentModel(){
+  return state.tab === 'surtidor' ? state.surtidor : state.totem;
+}
+function validate(){
+  var m = currentModel();
+  if (!m.fecha || !m.nombreEds){
+    return 'Completa al menos Fecha y Nombre EDS antes de guardar.';
+  }
+  return null;
+}
+function storageSetWithRetry(key, value, shared, attemptsLeft){
+  attemptsLeft = (attemptsLeft === undefined) ? 5 : attemptsLeft;
+  return window.storage.set(key, value).catch(function(err){
+    if (attemptsLeft > 1){
+      var wait = (6 - attemptsLeft) * 1200;
+      return new Promise(function(resolve){ setTimeout(resolve, wait); }).then(function(){
+        return storageSetWithRetry(key, value, shared, attemptsLeft - 1);
+      });
+    }
+    throw err;
+  });
+}
+function saveRecord(){
+  var errMsg = validate();
+  var wrap = document.getElementById('wrap');
+  var existingErr = document.getElementById('validationErr');
+  if (existingErr) existingErr.remove();
+  if (errMsg){
+    var e = el('div',{class:'err', id:'validationErr', text: errMsg});
+    wrap.insertBefore(e, wrap.firstChild);
+    return;
+  }
+  var m = currentModel();
+  var type = state.tab;
+  m._id = m._id || (type + '_' + Date.now() + '_' + Math.random().toString(36).slice(2,8));
+  m._type = type;
+  m._savedAt = new Date().toISOString();
+  var saveBtn = document.getElementById('btnSave');
+  saveBtn.disabled = true;
+  saveBtn.textContent = 'Guardando...';
+  var payload = JSON.stringify(m);
+  var sizeKB = Math.round(payload.length / 1024);
+  if (payload.length > 4200000){
+    saveBtn.disabled = false;
+    saveBtn.textContent = 'Guardar registro';
+    var eBig = el('div',{class:'err', text:'El registro pesa demasiado (' + sizeKB + ' KB) por las fotos adjuntas. Vuelve a tomar alguna foto (se comprime al tomarla) o quita una y guarda de nuevo.'});
+    wrap.insertBefore(eBig, wrap.firstChild);
+    return;
+  }
+  storageSetWithRetry('registro:' + m._id, payload, true).then(function(res){
+    saveBtn.disabled = false;
+    saveBtn.textContent = 'Guardar registro';
+    if (res){
+      var savedEds = m.nombreEds;
+      if (state.tab === 'surtidor') state.surtidor = emptyModel();
+      else state.totem = emptyModel();
+      markNew();
+      renderTab();
+      var okMsg = el('div',{class:'banner', text:'Registro de "' + savedEds + '" guardado. Formulario listo para agregar el siguiente.'});
+      document.getElementById('wrap').insertBefore(okMsg, document.getElementById('wrap').firstChild);
+    } else {
+      var e = el('div',{class:'err', text:'No se pudo guardar. Intenta de nuevo.'});
+      wrap.insertBefore(e, wrap.firstChild);
+    }
+  }).catch(function(err){
+    console.error('Error guardando', err, 'tamaño KB:', sizeKB);
+    saveBtn.disabled = false;
+    saveBtn.textContent = 'Guardar registro';
+    var e = el('div',{class:'err', text:'No se pudo guardar (' + sizeKB + ' KB). Puede ser la señal en el punto. Vuelve a intentar, y si sigue fallando usa el botón de abajo para no perder lo que ya llenaste.'});
+    wrap.insertBefore(e, wrap.firstChild);
+    var copyBtn = el('button', {text:'\u{1F4CB} Copiar datos del registro (respaldo)'});
+    copyBtn.style.cssText = 'width:100%;margin-top:8px;padding:12px;border-radius:8px;border:1px solid #C8C2AF;background:#FCFBF8;font-weight:600;color:var(--ink-2);cursor:pointer;';
+    copyBtn.addEventListener('click', function(){
+      var resumen = 'EDS: ' + (m.nombreEds||'') + ' | Código: ' + (m.codigoEds||'') + ' | Fecha: ' + (m.fecha||'') + '\n\n' + JSON.stringify(m);
+      var doCopy = function(){
+        navigator.clipboard.writeText(resumen).then(function(){
+          copyBtn.textContent = '\u2713 Copiado — pégalo en un chat o nota para no perderlo';
+        }).catch(function(){
+          copyBtn.textContent = 'No se pudo copiar automáticamente. Toma screenshot de este formulario.';
+        });
+      };
+      doCopy();
+    });
+    wrap.insertBefore(copyBtn, wrap.firstChild.nextSibling);
+  });
+}
+function clearForm(){
+  if (state.tab === 'surtidor') state.surtidor = emptyModel();
+  else if (state.tab === 'totem') state.totem = emptyModel();
+  markNew();
+  renderTab();
+}
+var SURTIDOR_LABELS = [
+  ['fecha','Fecha'],['ciudad','Ciudad o municipio'],['nombreEds','Nombre EDS'],['codigoEds','Código EDS'],
+  ['cantSurtidores','Cantidad de surtidores'],['cantCaras','Caras por surtidor'],['cantProductos','Cantidad de productos'],
+  ['productosCara1','Productos ofrecidos - cara 1'],['productosCara2','Productos ofrecidos - cara 2'],
+  ['anchoCenefa','Ancho cenefa surtidor (cm)'],['altoSurtidor','Alto surtidor (cm)'],['profundidad','Profundidad surtidor (cm)'],
+  ['stickerSobrePlaca','Sticker licencia - sobre placa'],['stickerAUnLado','Sticker licencia - a un lado del surtidor'],
+  ['entorno_Viga_sobre_surtidor','Entorno - viga sobre surtidor'],['entorno_Pegado_a_columna','Entorno - pegado a columna'],
+  ['entorno_Mueble_de_productos_cerca','Entorno - mueble de productos cerca'],['entorno_Tanque_de_uria_pegado','Entorno - tanque de uria pegado'],
+  ['entorno_Techo','Entorno - techo'],
+  ['requisitosAltura','Requisitos de altura de trabajo'],
+  ['cuentaBanos','Cuenta con baños'],['cantBanos','Cantidad de baños'],['banoDama','Baño dama'],['banoCaballero','Baño caballero'],['banoFamiliar','Baño familiar'],
+  ['cantIslas','Cantidad de islas'],['islasCarro','Islas carro'],['islasMoto','Islas moto'],['islaGnv','Isla GNV'],
+  ['cuentaCajaLuz','Cuenta con caja de luz'],['cantCajaLuz','Cantidad caja de luz'],
+  ['observaciones','Observaciones']
+];
+var TOTEM_LABELS = [
+  ['fecha','Fecha'],['ciudad','Ciudad o municipio'],['nombreEds','Nombre EDS'],['codigoEds','Código EDS'],
+  ['alturaTotem','Altura tótem (cm)'],['modeloTotem','Modelo tótem'],['descripcionTipo','Descripción del tipo de tótem'],
+  ['cantTotem','Cantidad de tótem'],['cantCaras','Cantidad de caras'],['cantProductos','Cantidad de productos'],['tipoProducto','Tipo de producto'],
+  ['placaAncho','Placa nombre producto - ancho (cm)'],['placaAlto','Placa nombre producto - alto (cm)'],
+  ['recuadroAncho','Recuadro nombres productos - ancho (cm)'],['recuadroAlto','Recuadro nombres productos - alto (cm)'],
+  ['areaAncho','Área total aviso - ancho (cm)'],['areaAlto','Área total aviso - alto (cm)'],
+  ['requisitosAltura','Requisitos de trabajo en alturas'],['alturaPantalla','Altura piso a pantalla de precios (cm)'],['luzDomos','Luz de domos'],
+  ['obstaculos','Obstáculos para instalación'],
+  ['observaciones','Observaciones']
+];
+function formatValue(v){
+  if (v === undefined || v === null || v === '') return '—';
+  if (Array.isArray(v)) return v.length ? v.join(', ') : '—';
+  if (typeof v === 'object'){
+    var parts = Object.keys(v).filter(function(k){ return v[k]; }).map(function(k){ return k + ': ' + v[k]; });
+    return parts.length ? parts.join(' · ') : '—';
+  }
+  return String(v);
+}
+function countPhotos(r){
+  var n = 0;
+  var check = function(obj, key){ if (typeof obj[key] === 'string' && obj[key].indexOf('data:image') === 0) n++; };
+  if (r._type === 'surtidor'){
+    ['fotoBanos','fotoIslas','fotoGeneralEds'].forEach(function(k){ check(r,k); });
+    (r.surtidores || []).forEach(function(s){ check(s,'fotoCara1'); check(s,'fotoCara2'); });
+  } else {
+    check(r,'foto'); check(r,'foto2');
+  }
+  return n;
+}
+function renderDetail(record){
+  var wrap = document.getElementById('wrap');
+  wrap.innerHTML = '';
+  document.getElementById('footerBar').style.display = 'none';
+  var backBtn = el('button',{text:'\u2190 Volver a Registros'});
+  backBtn.style.cssText = 'margin-bottom:14px;padding:9px 14px;border-radius:7px;border:1px solid #D8D2C2;background:#fff;font-weight:600;color:#3C4A59;';
+  backBtn.addEventListener('click', function(){ state.tab = 'registros'; renderTab(); });
+  wrap.appendChild(backBtn);
+  var head = el('div',{class:'banner'});
+  head.textContent = (record._type === 'surtidor' ? 'Surtidor' : 'Tótem') + ' — ' + (record.nombreEds || '(sin nombre)');
+  wrap.appendChild(head);
+  var labels = record._type === 'surtidor' ? SURTIDOR_LABELS : TOTEM_LABELS;
+  var rows = labels.map(function(pair){
+    var row = el('div',{style:'display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid #EFEAD0;font-size:13.5px;'});
+    var lbl = el('span',{text:pair[1]}); lbl.style.color = '#8A8578'; lbl.style.flex = '0 0 55%';
+    var val = el('span',{text: formatValue(record[pair[0]])}); val.style.fontWeight = '600'; val.style.textAlign = 'right';
+    row.appendChild(lbl); row.appendChild(val);
+    return row;
+  });
+  wrap.appendChild(sectionEl(1, 'Datos del registro', rows));
+  if (record._type === 'surtidor'){
+    var pBody = [];
+    ['placasCara1','placasCara2'].forEach(function(key, i){
+      pBody.push(el('div',{class:'cara-title', text:'Placas cara ' + (i+1)}));
+      pBody.push(el('div',{class:'hint', text: 'Por producto: ' + formatValue(record[key])}));
+      var medidas = (record[key + '_medidas'] || []).filter(Boolean);
+      if (medidas.length){
+        pBody.push(el('div',{class:'hint', text: 'Medidas: ' + medidas.join(', ')}));
+      }
+    });
+    wrap.appendChild(sectionEl(2, 'Placas y medidas', pBody));
+  }
+  if (record._type === 'surtidor' && record.surtidores && record.surtidores.length){
+    var sBody = [];
+    record.surtidores.forEach(function(s, idx){
+      sBody.push(el('div',{class:'cara-title', text:'Surtidor ' + (idx+1) + ' — ' + (s.marca||'—') + ' ' + (s.modelo||'')}));
+      if (s.descripcion) sBody.push(el('div',{class:'hint', text: s.descripcion}));
+      if (typeof s.fotoCara1 === 'string' && s.fotoCara1.indexOf('data:image')===0){
+        sBody.push(el('div',{class:'subgrid-label', text:'Foto cara 1'}));
+        sBody.push(el('img',{class:'photo-preview', src:s.fotoCara1}));
+      }
+      if (typeof s.fotoCara2 === 'string' && s.fotoCara2.indexOf('data:image')===0){
+        sBody.push(el('div',{class:'subgrid-label', text:'Foto cara 2'}));
+        sBody.push(el('img',{class:'photo-preview', src:s.fotoCara2}));
+      }
+    });
+    wrap.appendChild(sectionEl(3, 'Surtidores y sus fotos', sBody));
+  }
+  var photoBody = [];
+  function addPhoto(val, label){
+    if (typeof val === 'string' && val.indexOf('data:image') === 0){
+      photoBody.push(el('div',{class:'subgrid-label', text:label}));
+      photoBody.push(el('img',{class:'photo-preview', src:val}));
+    }
+  }
+  if (record._type === 'surtidor'){
+    addPhoto(record.fotoBanos, 'Foto de los baños');
+    addPhoto(record.fotoIslas, 'Foto de las islas');
+    addPhoto(record.fotoGeneralEds, 'Foto general de la EDS');
+  } else {
+    addPhoto(record.foto, 'Foto tótem - cara 1');
+    addPhoto(record.foto2, 'Foto tótem - cara 2');
+  }
+  if (photoBody.length){
+    wrap.appendChild(sectionEl(record._type === 'surtidor' ? 4 : 2, 'Otras fotos', photoBody));
+  }
+  if (!photoBody.length && !(record.surtidores && record.surtidores.length)){
+    wrap.appendChild(el('div',{class:'hint', text:'Este registro no tiene fotos adjuntas.'}));
+  }
+}
+function renderRegistros(){
+  var wrap = document.getElementById('wrap');
+  wrap.innerHTML = '';
+  document.getElementById('footerBar').style.display = 'none';
+  var toolbar = el('div',{class:'toolbar'});
+  var search = el('input',{type:'text', placeholder:'Buscar por EDS o código...'});
+  toolbar.appendChild(search);
+  wrap.appendChild(toolbar);
+  var exportRow = el('div',{class:'toolbar'});
+  var exportSurtidorBtn = el('button',{text:'Exportar Surtidores (Excel)'});
+  var exportTotemBtn = el('button',{text:'Exportar Tótems (Excel)'});
+  exportRow.appendChild(exportSurtidorBtn);
+  exportRow.appendChild(exportTotemBtn);
+  wrap.appendChild(exportRow);
+  var listContainer = el('div',{});
+  wrap.appendChild(listContainer);
+  var allRecords = [];
+  function renderList(filterText){
+    listContainer.innerHTML = '';
+    var filtered = allRecords.filter(function(r){
+      if (!filterText) return true;
+      var t = (r.nombreEds||'') + ' ' + (r.codigoEds||'');
+      return t.toLowerCase().indexOf(filterText.toLowerCase()) !== -1;
+    });
+    if (filtered.length === 0){
+      listContainer.appendChild(el('div',{class:'empty'}, [
+        el('div',{text:'\u{1F4CB}'}),
+        el('div',{text:'Aun no hay registros guardados.'})
+      ]));
+      return;
+    }
+    filtered.sort(function(a,b){ return (b._savedAt||'').localeCompare(a._savedAt||''); });
+    filtered.forEach(function(r){
+      var item = el('div',{class:'list-item'});
+      var top = el('div',{class:'list-item-top'});
+      top.appendChild(el('div',{class:'list-eds', text: r.nombreEds || '(sin nombre)'}));
+      top.appendChild(el('div',{class:'list-tag', text: r._type === 'surtidor' ? 'Surtidor' : 'Totem'}));
+      item.appendChild(top);
+      var meta = r.codigoEds ? ('Código: ' + r.codigoEds) : '';
+      meta += r.fecha ? ((meta?' · ':'') + r.fecha) : '';
+      meta += r.ciudad ? (' · ' + r.ciudad) : '';
+      var nFotos = countPhotos(r);
+      meta += ' · ' + nFotos + (nFotos === 1 ? ' foto' : ' fotos');
+      item.appendChild(el('div',{class:'list-meta', text: meta}));
+      var actions = el('div',{class:'list-actions'});
+      var verBtn = el('button',{text:'Ver'});
+      verBtn.addEventListener('click', function(){ renderDetail(r); });
+      var editBtn = el('button',{text:'Editar'});
+      editBtn.addEventListener('click', function(){
+        var recordClone = JSON.parse(JSON.stringify(r));
+        if (recordClone._type === 'surtidor'){ state.surtidor = recordClone; state.tab = 'surtidor'; }
+        else { state.totem = recordClone; state.tab = 'totem'; }
+        markSaved();
+        setActiveTab(state.tab);
+      });
+      var delBtn = el('button',{text:'Eliminar'});
+      delBtn.addEventListener('click', function(){
+        window.storage.delete('registro:' + r._id).then(function(){
+          loadAll();
+        }).catch(function(err){ console.error(err); });
+      });
+      actions.appendChild(verBtn);
+      actions.appendChild(editBtn);
+      actions.appendChild(delBtn);
+      item.appendChild(actions);
+      listContainer.appendChild(item);
+    });
+  }
+  function exportSurtidorCsv(){
+    var records = allRecords.filter(function(r){ return r._type === 'surtidor'; });
+    if (records.length === 0){ alert('No hay registros de Surtidor guardados todavía.'); return; }
+    var headers = SURTIDOR_LABELS.map(function(p){ return p[1]; })
+      .concat(['Detalle de surtidores (marca / modelo / descripción)', 'Placas cara 1 por producto', 'Medidas placas cara 1', 'Placas cara 2 por producto', 'Medidas placas cara 2', 'Cantidad de fotos adjuntas']);
+    var rows = [headers];
+    records.forEach(function(r){
+      var row = SURTIDOR_LABELS.map(function(p){ return formatValue(r[p[0]]); });
+      var detalle = (r.surtidores||[]).map(function(s, idx){
+        return 'Surtidor ' + (idx+1) + ': ' + (s.marca||'—') + ' / ' + (s.modelo||'—') + ' / ' + (s.descripcion||'—');
+      }).join(' | ');
+      row.push(detalle);
+      row.push(formatValue(r.placasCara1));
+      row.push((r.placasCara1_medidas||[]).filter(Boolean).join(', ') || '—');
+      row.push(formatValue(r.placasCara2));
+      row.push((r.placasCara2_medidas||[]).filter(Boolean).join(', ') || '—');
+      row.push(countPhotos(r) + ' (ver fotos en la app: Registros > Ver)');
+      rows.push(row);
+    });
+    downloadXlsx(rows, 'Surtidores', 'registros_surtidor.xlsx');
+  }
+  function exportTotemCsv(){
+    var records = allRecords.filter(function(r){ return r._type === 'totem'; });
+    if (records.length === 0){ alert('No hay registros de Tótem guardados todavía.'); return; }
+    var headers = TOTEM_LABELS.map(function(p){ return p[1]; }).concat(['Cantidad de fotos adjuntas']);
+    var rows = [headers];
+    records.forEach(function(r){
+      var row = TOTEM_LABELS.map(function(p){ return formatValue(r[p[0]]); });
+      row.push(countPhotos(r) + ' (ver fotos en la app: Registros > Ver)');
+      rows.push(row);
+    });
+    downloadXlsx(rows, 'Totem', 'registros_totem.xlsx');
+  }
+  function downloadXlsx(rowsArray, sheetName, filename){
+    if (typeof XLSX === 'undefined'){
+      alert('No se pudo cargar el generador de Excel. Revisa tu conexión a internet e intenta de nuevo.');
+      return;
+    }
+    var ws = XLSX.utils.aoa_to_sheet(rowsArray);
+    var colWidths = rowsArray[0].map(function(h, i){
+      var maxLen = h.length;
+      rowsArray.forEach(function(r){ if (r[i] && String(r[i]).length > maxLen) maxLen = String(r[i]).length; });
+      return { wch: Math.min(Math.max(maxLen + 2, 10), 45) };
+    });
+    ws['!cols'] = colWidths;
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+    XLSX.writeFile(wb, filename);
+  }
+  search.addEventListener('input', function(){ renderList(search.value); });
+  exportSurtidorBtn.addEventListener('click', exportSurtidorCsv);
+  exportTotemBtn.addEventListener('click', exportTotemCsv);
+  function loadAll(){
+    listContainer.innerHTML = '<div class="empty"><div>...</div><div>Cargando registros...</div></div>';
+    window.storage.list('registro:').then(function(res){
+      var keys = (res && res.keys) || [];
+      if (keys.length === 0){ allRecords = []; renderList(search.value); return; }
+      var promises = keys.map(function(k){
+        return window.storage.get(k).then(function(r){
+          try { return JSON.parse(r.value); } catch(e){ return null; }
+        }).catch(function(){ return null; });
+      });
+      Promise.all(promises).then(function(results){
+        allRecords = results.filter(Boolean);
+        renderList(search.value);
+      });
+    }).catch(function(err){
+      console.error(err);
+      listContainer.innerHTML = '';
+      listContainer.appendChild(el('div',{class:'empty'},[
+        el('div',{text:'\u26A0'}),
+        el('div',{text:'No se pudieron cargar los registros.'})
+      ]));
+    });
+  }
+  loadAll();
+}
+function renderTab(){
+  document.getElementById('footerBar').style.display = 'flex';
+  if (state.tab === 'surtidor') renderSurtidor();
+  else if (state.tab === 'totem') renderTotem();
+  else renderRegistros();
+}
+function setActiveTab(tab){
+  state.tab = tab;
+  Array.prototype.forEach.call(document.querySelectorAll('.tab'), function(t){
+    t.classList.toggle('active', t.getAttribute('data-tab') === tab);
+  });
+  var m = tab === 'surtidor' ? state.surtidor : (tab === 'totem' ? state.totem : null);
+  if (m && m._savedAt) markSaved();
+  else if (tab !== 'registros') markNew();
+  renderTab();
+}
+document.getElementById('mainTabs').addEventListener('click', function(e){
+  var tab = e.target.getAttribute('data-tab');
+  if (tab) setActiveTab(tab);
+});
+document.getElementById('btnSave').addEventListener('click', saveRecord);
+document.getElementById('btnClear').addEventListener('click', clearForm);
+function updateOfflineBanner(){
+  var banner = document.getElementById('offlineBanner');
+  banner.style.display = (navigator.onLine === false) ? 'block' : 'none';
+}
+window.addEventListener('online', updateOfflineBanner);
+window.addEventListener('offline', updateOfflineBanner);
+updateOfflineBanner();
+renderTab();
+})();
+</script>
+</body>
+</html>

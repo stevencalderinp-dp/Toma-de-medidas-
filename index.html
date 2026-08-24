@@ -116,12 +116,6 @@
   .btn-primary{background:var(--accent);color:#fff;}
   .btn-primary:active{background:var(--accent-dark);}
   .btn-secondary{background:#fff;border:1px solid var(--line);color:var(--ink-2);}
-  .list-item{
-    background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:10px;
-  }
-  .list-eds{font-size:15px;font-weight:700;}
-  .list-meta{font-size:12.5px;color:#8A8578;margin-top:3px;}
-  .empty{text-align:center;padding:50px 20px;color:#9A9384;}
   .banner{
     background:var(--ok-bg);color:var(--ok);border-radius:8px;padding:10px 12px;
     font-size:13px;font-weight:600;margin-bottom:14px;display:flex;align-items:center;gap:8px;
@@ -153,7 +147,7 @@
 </div>
 <script>
 (function(){
-var GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzjq0wyPfkP3IJnSdx5jMKOM55C7A-5nqjvqjozZDgZHXZeAt0weDWJBbjNF3GJvv9PGA/exec";
+var GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwADFFsd80kbjuDthSZYzuUgDoOZSwG-MnXeJ3UnkzeCa0p3masCUOmUgCfC3g1dOdvYA/exec";
 
 var state = {
   tab: 'surtidor',
@@ -470,8 +464,7 @@ function renderTotem(){
 function sendToGoogleSheets(data){
   return fetch(GOOGLE_SCRIPT_URL, {
     method: 'POST',
-    mode: 'no-cors',
-    headers: { 'Content-Type': 'text/plain' },
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify(data)
   });
 }
@@ -489,7 +482,7 @@ function saveUnifiedRecord(){
   btn.disabled = true;
   btn.textContent = 'Guardando y subiendo a Drive...';
 
-  sendToGoogleSheets(m).then(function(){
+  sendToGoogleSheets(m).then(function(res){
     btn.disabled = false;
     alert('¡Inspección guardada con éxito! Revisa Google Sheets y Google Drive.');
     state.form = { fecha:'', ciudad:'', nombreEds:'', codigoEds:'', surtidores:[] };

@@ -101,6 +101,9 @@
   .subgrid-label{font-size:11px;font-weight:700;color:#8A8578;text-transform:uppercase;margin:10px 0 6px;letter-spacing:0.03em;}
   .cara-block{border:1px dashed var(--line);border-radius:8px;padding:10px;margin-bottom:10px;}
   .cara-block .cara-title{font-size:12px;font-weight:700;color:var(--ink-2);margin-bottom:8px;}
+  .placa-medidas-box{
+    background:#FAF8F3;border:1px solid #E0DBCF;border-radius:6px;padding:8px;margin-top:6px;margin-bottom:8px;
+  }
   .photo-btn{
     display:flex;align-items:center;justify-content:center;gap:8px;
     border:1.5px dashed #C8C2AF;border-radius:8px;padding:16px;cursor:pointer;
@@ -118,30 +121,12 @@
   .btn-primary{background:var(--accent);color:#fff;}
   .btn-primary:active{background:var(--accent-dark);}
   .btn-secondary{background:#fff;border:1px solid var(--line);color:var(--ink-2);}
-  .err{color:var(--danger);font-size:12px;margin-top:4px;}
   .list-item{
     background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:10px;
   }
-  .list-item-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
   .list-eds{font-size:15px;font-weight:700;}
-  .list-tag{
-    font-size:10.5px;font-weight:700;text-transform:uppercase;background:var(--tag);
-    color:var(--accent-dark);padding:3px 8px;border-radius:4px;white-space:nowrap;
-  }
   .list-meta{font-size:12.5px;color:#8A8578;margin-top:3px;}
-  .list-actions{display:flex;gap:8px;margin-top:10px;}
-  .list-actions button{
-    flex:1;padding:8px;font-size:12.5px;font-weight:600;border-radius:6px;
-    border:1px solid var(--line);background:#FCFBF8;color:var(--ink-2);cursor:pointer;
-  }
   .empty{text-align:center;padding:50px 20px;color:#9A9384;}
-  .empty div:first-child{font-size:32px;margin-bottom:8px;}
-  .toolbar{display:flex;gap:8px;margin-bottom:14px;}
-  .toolbar input{flex:1;}
-  .toolbar button{
-    padding:10px 14px;border-radius:7px;border:1px solid var(--line);background:#fff;
-    font-size:13px;font-weight:600;color:var(--ink-2);cursor:pointer;white-space:nowrap;
-  }
   .banner{
     background:var(--ok-bg);color:var(--ok);border-radius:8px;padding:10px 12px;
     font-size:13px;font-weight:600;margin-bottom:14px;display:flex;align-items:center;gap:8px;
@@ -164,9 +149,6 @@
       <div class="tab" data-tab="totem">2. Tótem</div>
       <div class="tab" data-tab="registros">Historial</div>
     </div>
-  </div>
-  <div id="offlineBanner" style="display:none;background:#B23A2E;color:#fff;text-align:center;padding:7px;font-size:12.5px;font-weight:600;">
-    Sin conexión — los registros se guardarán localmente hasta recuperar señal
   </div>
   <div class="wrap" id="wrap"></div>
   <div class="footer-bar" id="footerBar">
@@ -191,14 +173,6 @@ window.storage = {
     return new Promise(function(resolve, reject) {
       try {
         localStorage.setItem(key, value);
-        resolve(true);
-      } catch (e) { reject(e); }
-    });
-  },
-  delete: function(key) {
-    return new Promise(function(resolve, reject) {
-      try {
-        localStorage.removeItem(key);
         resolve(true);
       } catch (e) { reject(e); }
     });
@@ -426,27 +400,63 @@ function labeledPhoto(model, key, labelText){
   return wrapper;
 }
 
+// FUNCIONALIDAD DESPLEGABLE DE MEDIDAS POR CADA PLACA
 function placasPorProductoBlock(m, key, title){
   if (!m[key]) m[key] = {};
+  if (!m[key + '_medidas']) m[key + '_medidas'] = {};
+
   var block = el('div',{class:'cara-block'});
   block.appendChild(el('div',{class:'cara-title', text:title}));
+
   PRODUCTOS.forEach(function(p){
-    var row = el('div',{style:'display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;'});
+    var itemBox = el('div',{style:'margin-bottom:12px; border-bottom:1px solid #EFECE6; padding-bottom:8px;'});
+    var row = el('div',{style:'display:flex;align-items:center;justify-content:space-between;gap:10px;'});
     var lbl = el('span',{text:p});
     lbl.style.fontSize = '13.5px';
     lbl.style.fontWeight = '600';
     lbl.style.color = 'var(--ink-2)';
+
     var input = el('input',{type:'number', min:'0'});
     input.style.width = '80px';
     input.value = m[key][p] || '';
+
+    var dynamicFieldsContainer = el('div',{});
+
+    function renderMedidasPlacas(cant){
+      dynamicFieldsContainer.innerHTML = '';
+      var num = parseInt(cant, 10);
+      if (isNaN(num) || num <= 0) return;
+
+      if (!m[key + '_medidas'][p]) m[key + '_medidas'][p] = [];
+      while(m[key + '_medidas'][p].length < num) m[key + '_medidas'][p].push({ancho:'', alto:''});
+      while(m[key + '_medidas'][p].length > num) m[key + '_medidas'][p].pop();
+
+      m[key + '_medidas'][p].forEach(function(medida, idx){
+        var box = el('div', {class: 'placa-medidas-box'});
+        box.appendChild(el('div', {style: 'font-size:11px; font-weight:700; color:#6B6455; margin-bottom:4px;', text: 'Placa ' + (idx + 1) + ' (' + p + ') — Medidas (cm)'}));
+        
+        var r2 = el('div', {class: 'row2'});
+        r2.appendChild(field('Ancho (cm)', textInput(medida, 'ancho', 'Ancho', 'number')));
+        r2.appendChild(field('Alto (cm)', textInput(medida, 'alto', 'Alto', 'number')));
+        box.appendChild(r2);
+        dynamicFieldsContainer.appendChild(box);
+      });
+    }
+
     input.addEventListener('change', function(){
       m[key][p] = input.value;
+      renderMedidasPlacas(input.value);
       markDirty();
-      renderSurtidor();
     });
+
     row.appendChild(lbl);
     row.appendChild(input);
-    block.appendChild(row);
+    itemBox.appendChild(row);
+    itemBox.appendChild(dynamicFieldsContainer);
+    block.appendChild(itemBox);
+
+    // Renderizar si ya tenía un valor precargado
+    if (m[key][p]) renderMedidasPlacas(m[key][p]);
   });
   return block;
 }
@@ -515,8 +525,8 @@ function renderSurtidor(){
       d.appendChild(field('Alto surtidor', textInput(m,'altoSurtidor','','number')));
       return d;})(),
     field('Profundidad surtidor', textInput(m,'profundidad','','number')),
-    placasPorProductoBlock(m,'placasCara1','Placas cara 1'),
-    placasPorProductoBlock(m,'placasCara2','Placas cara 2')
+    placasPorProductoBlock(m,'placasCara1','Placas y medidas (Cara 1)'),
+    placasPorProductoBlock(m,'placasCara2','Placas y medidas (Cara 2)')
   ]));
 
   wrap.appendChild(sectionEl(6, 'Información general / Entorno', [
@@ -602,9 +612,7 @@ function saveUnifiedRecord(){
   btn.disabled = true;
   btn.textContent = 'Enviando y guardando...';
 
-  // Guardar localmente
   window.storage.set('registro:' + m._id, JSON.stringify(m)).then(function(){
-    // Enviar a Google Sheets
     sendToGoogleSheets(m).then(function(){
       btn.disabled = false;
       alert('¡Registro guardado y enviado a Google Sheets exitosamente!');

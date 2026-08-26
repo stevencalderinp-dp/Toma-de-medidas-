@@ -83,7 +83,6 @@
   textarea{min-height:64px;resize:vertical;}
   .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
   .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
-  .row4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;}
   .choice-group{display:flex;gap:8px;flex-wrap:wrap;}
   .choice{
     padding:9px 14px;border:1px solid #C8C2AF;border-radius:7px;font-size:13.5px;
@@ -99,6 +98,9 @@
   .subgrid-label{font-size:11px;font-weight:700;color:#8A8578;text-transform:uppercase;margin:10px 0 6px;letter-spacing:0.03em;}
   .cara-block{border:1px dashed var(--line);border-radius:8px;padding:10px;margin-bottom:10px;}
   .cara-block .cara-title{font-size:12px;font-weight:700;color:var(--ink-2);margin-bottom:8px;}
+  .placa-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;}
+  .placa-row span{font-size:13px;font-weight:600;color:var(--ink-2);min-width:70px;}
+  .placa-row input{width:90px;padding:6px 8px;font-size:14px;text-align:center;}
   .photo-btn{
     display:flex;align-items:center;justify-content:center;gap:8px;
     border:1.5px dashed #C8C2AF;border-radius:8px;padding:16px;cursor:pointer;
@@ -123,7 +125,7 @@
   .req{color:var(--danger);}
 
   @media(max-width:600px){
-    .row3, .row4{grid-template-columns:1fr 1fr;}
+    .row3{grid-template-columns:1fr 1fr;}
   }
 </style>
 </head>
@@ -160,6 +162,8 @@ var state = {
     ciudad: '',
     nombreEds: '',
     codigoEds: '',
+    placasCara1: { CTE: '', EXTRA: '', DIESEL: '' },
+    placasCara2: { CTE: '', EXTRA: '', DIESEL: '' },
     surtidores: []
   },
   dirty: false
@@ -341,6 +345,23 @@ function surtidoresRepeatingBlock(m){
   return container;
 }
 
+function renderPlacasPorProducto(modelMap){
+  var container = el('div', {});
+  PRODUCTOS.forEach(function(prod){
+    var r = el('div', {class:'placa-row'});
+    r.appendChild(el('span', {text: prod}));
+    var inp = el('input', {type:'number', min:'0', placeholder:'Cant. placas'});
+    inp.value = modelMap[prod] || '';
+    inp.addEventListener('input', function(){
+      modelMap[prod] = inp.value;
+      markDirty();
+    });
+    r.appendChild(inp);
+    container.appendChild(r);
+  });
+  return container;
+}
+
 function markDirty(){
   state.dirty = true;
   var stamp = document.getElementById('statusStamp');
@@ -370,7 +391,7 @@ function renderSurtidor(){
   ]));
   
   wrap.appendChild(sectionEl(2, 'Cantidades (Surtidores)', [
-    (function(){var d=el('div',{class:'row4'});
+    (function(){var d=el('div',{class:'row3'});
       var countInp = el('input', {type:'number', min:'0'});
       countInp.value = m.cantSurtidores || '';
       countInp.addEventListener('change', function(){
@@ -380,7 +401,6 @@ function renderSurtidor(){
       d.appendChild(field('Cant. surtidores', countInp));
       d.appendChild(field('Caras por surtidor', textInput(m,'cantCaras','','number')));
       d.appendChild(field('Cant. productos', textInput(m,'cantProductos','','number')));
-      d.appendChild(field('Cant. placas por cara', textInput(m,'cantPlacasCara','','number')));
       return d;})()
   ]));
 
@@ -388,14 +408,17 @@ function renderSurtidor(){
     surtidoresRepeatingBlock(m)
   ]));
 
-  wrap.appendChild(sectionEl(4, 'Productos ofrecidos por cara', [
+  if (!m.placasCara1) m.placasCara1 = { CTE: '', EXTRA: '', DIESEL: '' };
+  if (!m.placasCara2) m.placasCara2 = { CTE: '', EXTRA: '', DIESEL: '' };
+
+  wrap.appendChild(sectionEl(4, 'Cantidad de Placas por Producto y Cara', [
     (function(){var b=el('div',{class:'cara-block'});
-      b.appendChild(el('div',{class:'cara-title',text:'Cara surtidor 1'}));
-      b.appendChild(checkPillGroup(m,'productosCara1',PRODUCTOS));
+      b.appendChild(el('div',{class:'cara-title',text:'Cara Surtidor 1 (Placas por producto)'}));
+      b.appendChild(renderPlacasPorProducto(m.placasCara1));
       return b;})(),
     (function(){var b=el('div',{class:'cara-block'});
-      b.appendChild(el('div',{class:'cara-title',text:'Cara surtidor 2'}));
-      b.appendChild(checkPillGroup(m,'productosCara2',PRODUCTOS));
+      b.appendChild(el('div',{class:'cara-title',text:'Cara Surtidor 2 (Placas por producto)'}));
+      b.appendChild(renderPlacasPorProducto(m.placasCara2));
       return b;})()
   ]));
 
@@ -519,7 +542,7 @@ function saveUnifiedRecord(){
   sendToGoogleSheets(m).then(function(){
     btn.disabled = false;
     alert('¡Inspección guardada con éxito! Revisa tu Google Sheets y la nueva carpeta creada en Google Drive.');
-    state.form = { fecha:'', ciudad:'', nombreEds:'', codigoEds:'', surtidores:[] };
+    state.form = { fecha:'', ciudad:'', nombreEds:'', codigoEds:'', surtidores:[], placasCara1:{CTE:'',EXTRA:'',DIESEL:''}, placasCara2:{CTE:'',EXTRA:'',DIESEL:''} };
     markNew();
     setActiveTab('surtidor');
   }).catch(function(err){
@@ -571,7 +594,7 @@ document.getElementById('btnNextOrSave').addEventListener('click', function(){
 
 document.getElementById('btnClear').addEventListener('click', function(){
   if (confirm('¿Limpiar todo el formulario?')){
-    state.form = { fecha:'', ciudad:'', nombreEds:'', codigoEds:'', surtidores:[] };
+    state.form = { fecha:'', ciudad:'', nombreEds:'', codigoEds:'', surtidores:[], placasCara1:{CTE:'',EXTRA:'',DIESEL:''}, placasCara2:{CTE:'',EXTRA:'',DIESEL:''} };
     markNew();
     renderTab();
   }

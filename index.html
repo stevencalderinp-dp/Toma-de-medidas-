@@ -95,12 +95,65 @@
     cursor:pointer;user-select:none;background:#FCFBF8;color:var(--ink-2);font-weight:600;
   }
   .check-pill.on{background:var(--accent);border-color:var(--accent);color:#fff;}
+  
+  /* ESTILOS INTERACTIVOS DE PRODUCTOS Y CANTIDADES */
+  .productos-interactive-grid{
+    display:grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 12px;
+    margin-top: 8px;
+  }
+  .prod-card{
+    border: 1px solid #C8C2AF;
+    border-radius: 12px;
+    padding: 10px;
+    background: #FCFBF8;
+    transition: all 0.2s ease;
+  }
+  .prod-card.active{
+    border-color: var(--accent);
+    background: #FFF8F2;
+    box-shadow: 0 2px 6px rgba(217,114,10,0.15);
+  }
+  .prod-pill-btn{
+    padding: 8px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 700;
+    text-align: center;
+    cursor: pointer;
+    user-select: none;
+    background: #E8E3D5;
+    color: var(--ink-2);
+  }
+  .prod-card.active .prod-pill-btn{
+    background: var(--accent);
+    color: #fff;
+  }
+  .prod-qty-box{
+    margin-top: 8px;
+    display: none;
+  }
+  .prod-card.active .prod-qty-box{
+    display: block;
+  }
+  .prod-qty-box label{
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--ink-2);
+    display: block;
+    margin-bottom: 3px;
+  }
+  .prod-qty-box input{
+    padding: 6px 8px;
+    font-size: 14px;
+    text-align: center;
+    font-weight: 700;
+  }
+
   .subgrid-label{font-size:11px;font-weight:700;color:#8A8578;text-transform:uppercase;margin:10px 0 6px;letter-spacing:0.03em;}
-  .cara-block{border:1px dashed var(--line);border-radius:8px;padding:10px;margin-bottom:10px;}
-  .cara-block .cara-title{font-size:12px;font-weight:700;color:var(--ink-2);margin-bottom:8px;}
-  .placa-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;}
-  .placa-row span{font-size:13px;font-weight:600;color:var(--ink-2);min-width:70px;}
-  .placa-row input{width:90px;padding:6px 8px;font-size:14px;text-align:center;}
+  .cara-block{border:1px dashed var(--line);border-radius:8px;padding:12px;margin-bottom:12px;}
+  .cara-block .cara-title{font-size:13px;font-weight:700;color:var(--ink-2);margin-bottom:8px;}
   .photo-btn{
     display:flex;align-items:center;justify-content:center;gap:8px;
     border:1.5px dashed #C8C2AF;border-radius:8px;padding:16px;cursor:pointer;
@@ -162,8 +215,9 @@ var state = {
     ciudad: '',
     nombreEds: '',
     codigoEds: '',
-    placasCara1: { CTE: '', EXTRA: '', DIESEL: '' },
-    placasCara2: { CTE: '', EXTRA: '', DIESEL: '' },
+    // Guardaremos selecciones como: { CTE: { selected: true, cant: '2' }, DIESEL: { selected: false, cant: '' } }
+    productosCara1: { CTE: {selected:false, cant:''}, EXTRA: {selected:false, cant:''}, DIESEL: {selected:false, cant:''} },
+    productosCara2: { CTE: {selected:false, cant:''}, EXTRA: {selected:false, cant:''}, DIESEL: {selected:false, cant:''} },
     surtidores: []
   },
   dirty: false
@@ -345,21 +399,55 @@ function surtidoresRepeatingBlock(m){
   return container;
 }
 
-function renderPlacasPorProducto(modelMap){
-  var container = el('div', {});
+// COMPONENTE INTERACTIVO: PÍLDORA + CAMPO DE CANTIDAD
+function renderInteractiveProductosGroup(prodStateMap){
+  var grid = el('div', {class: 'productos-interactive-grid'});
+  
   PRODUCTOS.forEach(function(prod){
-    var r = el('div', {class:'placa-row'});
-    r.appendChild(el('span', {text: prod}));
-    var inp = el('input', {type:'number', min:'0', placeholder:'Cant. placas'});
-    inp.value = modelMap[prod] || '';
-    inp.addEventListener('input', function(){
-      modelMap[prod] = inp.value;
+    if (!prodStateMap[prod]) {
+      prodStateMap[prod] = { selected: false, cant: '' };
+    }
+    var itemState = prodStateMap[prod];
+
+    var card = el('div', {class: 'prod-card' + (itemState.selected ? ' active' : '')});
+    
+    var pillBtn = el('div', {class: 'prod-pill-btn', text: prod});
+    
+    var qtyBox = el('div', {class: 'prod-qty-box'});
+    qtyBox.appendChild(el('label', {text: 'Cantidad de placas:'}));
+    
+    var inputQty = el('input', {type: 'number', min: '1', placeholder: 'Cant.'});
+    inputQty.value = itemState.cant || '';
+
+    // Evento al presionar la píldora
+    pillBtn.addEventListener('click', function(){
+      itemState.selected = !itemState.selected;
+      if (itemState.selected) {
+        card.classList.add('active');
+        if (!itemState.cant) itemState.cant = '1'; // valor sugerido por defecto
+        inputQty.value = itemState.cant;
+        setTimeout(function(){ inputQty.focus(); }, 100);
+      } else {
+        card.classList.remove('active');
+        itemState.cant = '';
+        inputQty.value = '';
+      }
       markDirty();
     });
-    r.appendChild(inp);
-    container.appendChild(r);
+
+    // Evento al escribir en la cantidad
+    inputQty.addEventListener('input', function(){
+      itemState.cant = inputQty.value;
+      markDirty();
+    });
+
+    qtyBox.appendChild(inputQty);
+    card.appendChild(pillBtn);
+    card.appendChild(qtyBox);
+    grid.appendChild(card);
   });
-  return container;
+
+  return grid;
 }
 
 function markDirty(){
@@ -408,17 +496,17 @@ function renderSurtidor(){
     surtidoresRepeatingBlock(m)
   ]));
 
-  if (!m.placasCara1) m.placasCara1 = { CTE: '', EXTRA: '', DIESEL: '' };
-  if (!m.placasCara2) m.placasCara2 = { CTE: '', EXTRA: '', DIESEL: '' };
+  if (!m.productosCara1) m.productosCara1 = { CTE: {selected:false, cant:''}, EXTRA: {selected:false, cant:''}, DIESEL: {selected:false, cant:''} };
+  if (!m.productosCara2) m.productosCara2 = { CTE: {selected:false, cant:''}, EXTRA: {selected:false, cant:''}, DIESEL: {selected:false, cant:''} };
 
-  wrap.appendChild(sectionEl(4, 'Cantidad de Placas por Producto y Cara', [
+  wrap.appendChild(sectionEl(4, 'Productos ofrecidos por cara y cantidad', [
     (function(){var b=el('div',{class:'cara-block'});
-      b.appendChild(el('div',{class:'cara-title',text:'Cara Surtidor 1 (Placas por producto)'}));
-      b.appendChild(renderPlacasPorProducto(m.placasCara1));
+      b.appendChild(el('div',{class:'cara-title',text:'Cara surtidor 1 (Selecciona y asigna cantidad)'}));
+      b.appendChild(renderInteractiveProductosGroup(m.productosCara1));
       return b;})(),
     (function(){var b=el('div',{class:'cara-block'});
-      b.appendChild(el('div',{class:'cara-title',text:'Cara Surtidor 2 (Placas por producto)'}));
-      b.appendChild(renderPlacasPorProducto(m.placasCara2));
+      b.appendChild(el('div',{class:'cara-title',text:'Cara surtidor 2 (Selecciona y asigna cantidad)'}));
+      b.appendChild(renderInteractiveProductosGroup(m.productosCara2));
       return b;})()
   ]));
 
@@ -537,12 +625,16 @@ function saveUnifiedRecord(){
   
   var btn = document.getElementById('btnNextOrSave');
   btn.disabled = true;
-  btn.textContent = 'Guardando y subiendo fotos a Drive...';
+  btn.textContent = 'Guardando e inspeccionando...';
 
   sendToGoogleSheets(m).then(function(){
     btn.disabled = false;
-    alert('¡Inspección guardada con éxito! Revisa tu Google Sheets y la nueva carpeta creada en Google Drive.');
-    state.form = { fecha:'', ciudad:'', nombreEds:'', codigoEds:'', surtidores:[], placasCara1:{CTE:'',EXTRA:'',DIESEL:''}, placasCara2:{CTE:'',EXTRA:'',DIESEL:''} };
+    alert('¡Inspección guardada con éxito! Se han actualizado las fotos y datos.');
+    state.form = { 
+      fecha:'', ciudad:'', nombreEds:'', codigoEds:'', surtidores:[], 
+      productosCara1:{ CTE: {selected:false, cant:''}, EXTRA: {selected:false, cant:''}, DIESEL: {selected:false, cant:''} },
+      productosCara2:{ CTE: {selected:false, cant:''}, EXTRA: {selected:false, cant:''}, DIESEL: {selected:false, cant:''} } 
+    };
     markNew();
     setActiveTab('surtidor');
   }).catch(function(err){
@@ -594,7 +686,11 @@ document.getElementById('btnNextOrSave').addEventListener('click', function(){
 
 document.getElementById('btnClear').addEventListener('click', function(){
   if (confirm('¿Limpiar todo el formulario?')){
-    state.form = { fecha:'', ciudad:'', nombreEds:'', codigoEds:'', surtidores:[], placasCara1:{CTE:'',EXTRA:'',DIESEL:''}, placasCara2:{CTE:'',EXTRA:'',DIESEL:''} };
+    state.form = { 
+      fecha:'', ciudad:'', nombreEds:'', codigoEds:'', surtidores:[], 
+      productosCara1:{ CTE: {selected:false, cant:''}, EXTRA: {selected:false, cant:''}, DIESEL: {selected:false, cant:''} },
+      productosCara2:{ CTE: {selected:false, cant:''}, EXTRA: {selected:false, cant:''}, DIESEL: {selected:false, cant:''} } 
+    };
     markNew();
     renderTab();
   }

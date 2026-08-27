@@ -256,10 +256,17 @@ var state = {
 var PRODUCTOS = ['CTE','EXTRA','DIESEL'];
 var PRODUCTOS_TOTEM = ['CTE','EXTRA','DIESEL','GNV'];
 var MARCAS_SURTIDOR = ['WAYNE','GILBARCO'];
+
+// MODELOS DE SURTIDORES ACTUALIZADOS
 var MODELOS_SURTIDOR = [
-  'WAYNE H5000','WAYNE H4000','WAYNE HELIX H1000','WAYNE H1000',
-  'WAYNE ENCORE 500','WAYNE ENCORE 300','WAYNE ENCORE 500SD',
-  'GILBARCO PRIME PHD 2422-D','GILBARCO PRIME PHD 4822-D','GILBARCO ADVANTAGE'
+  'H5000',
+  'H4000',
+  'HELIX H1000',
+  'H1000',
+  'ENCORE 500S',
+  'ENCORE 500SD',
+  'PRIME PHD-3622-D',
+  'ADVANTAGE'
 ];
 
 function el(tag, attrs, children){
@@ -400,7 +407,6 @@ function photoField(model, key, labelTitle){
   return wrapper;
 }
 
-// COMPONENTE INTERACTIVO DE SELECCIÓN DE PRODUCTOS Y PLACAS POR CARA
 function renderProductosPlacasGroup(prodStateMap){
   var grid = el('div', {class: 'productos-interactive-grid'});
   
@@ -486,14 +492,12 @@ function surtidoresRepeatingBlock(m){
 
     block.appendChild(field('Descripción / Ubicación', textArea(s,'descripcion','Ej: Dispensador doble frente a caja')));
 
-    // BLOQUE INTERACTIVO DE PLACAS Y CARA 1
     var c1 = el('div', {class:'cara-subblock'});
     c1.appendChild(el('div', {class:'cara-subblock-title', text:'CARA 1: Placas y Fotos'}));
     c1.appendChild(renderProductosPlacasGroup(s.productosCara1));
     c1.appendChild(photoField(s, 'fotoCara1', 'Foto Cara 1'));
     block.appendChild(c1);
 
-    // BLOQUE INTERACTIVO DE PLACAS Y CARA 2
     var c2 = el('div', {class:'cara-subblock'});
     c2.appendChild(el('div', {class:'cara-subblock-title', text:'CARA 2: Placas y Fotos'}));
     c2.appendChild(renderProductosPlacasGroup(s.productosCara2));
@@ -643,7 +647,6 @@ function sendToGoogleSheets(data){
       form.action = GOOGLE_SCRIPT_URL;
       form.target = iframeName;
 
-      // Procesar cada surtidor para formatear sus placas/cantidades en texto claro
       var payload = JSON.parse(JSON.stringify(data));
       if (payload.surtidores && payload.surtidores.length > 0) {
         payload.surtidores.forEach(function(s){

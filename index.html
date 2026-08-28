@@ -73,7 +73,6 @@
   .field label{
     display:block;font-size:12.5px;font-weight:600;color:var(--ink-2);margin-bottom:5px;
   }
-  .hint{font-size:12.5px;color:#8A8578;margin-bottom:10px;}
   input[type=text],input[type=number],input[type=date],select,textarea{
     width:100%;padding:10px 11px;border:1px solid #C8C2AF;border-radius:7px;
     font-size:15px;background:#FCFBF8;color:var(--ink);font-family:inherit;
@@ -84,7 +83,7 @@
   .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
   .choice-group{display:flex;gap:8px;flex-wrap:wrap;}
   .choice{
-    padding:9px 14px;border:1px solid #C8C2AF;border-radius:7px;font-size:13.5px;
+    padding:8px 12px;border:1px solid #C8C2AF;border-radius:7px;font-size:13px;
     cursor:pointer;user-select:none;background:#FCFBF8;color:var(--ink-2);font-weight:600;
   }
   .choice.on{background:var(--ink);border-color:var(--ink);color:#fff;}
@@ -95,10 +94,10 @@
   }
   .check-pill.on{background:var(--accent);border-color:var(--accent);color:#fff;}
   
-  /* ESTILOS INTERACTIVOS DE PRODUCTOS Y CANTIDADES DE PLACAS */
+  /* TARJETAS INTERACTIVAS DE PRODUCTO Y MEDIDAS */
   .productos-interactive-grid{
     display:grid;
-    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
     gap: 10px;
     margin-top: 6px;
   }
@@ -137,22 +136,22 @@
     display: block;
   }
   .prod-qty-box label{
-    font-size: 10.5px;
+    font-size: 10px;
     font-weight: 600;
     color: var(--ink-2);
     display: block;
-    margin-bottom: 3px;
+    margin-bottom: 2px;
   }
   .prod-qty-box input{
-    padding: 5px 6px;
-    font-size: 13px;
+    padding: 4px 6px;
+    font-size: 12px;
     text-align: center;
     font-weight: 700;
+    margin-bottom: 4px;
   }
 
-  .subgrid-label{font-size:11px;font-weight:700;color:#8A8578;text-transform:uppercase;margin:10px 0 6px;letter-spacing:0.03em;}
+  .subgrid-label{font-size:11px;font-weight:700;color:#8A8578;text-transform:uppercase;margin:12px 0 6px;letter-spacing:0.03em;}
   
-  /* CONTENEDOR DE CADA SURTIDOR DESPLEGADO */
   .surtidor-block{
     border: 1px solid var(--line);
     background: #FAF9F5;
@@ -167,9 +166,6 @@
     padding-bottom: 8px;
     margin-bottom: 12px;
     border-bottom: 2px solid var(--accent);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
   }
 
   .cara-subblock{
@@ -236,6 +232,7 @@
     <button class="btn btn-primary" id="btnNextOrSave">Continuar a Tótem &rarr;</button>
   </div>
 </div>
+
 <script>
 (function(){
 var GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyXmdm9kgGQxdnshWPgZ7xXp2Q_7EQ6jeNEa0fIqvk79TZxfPcRwQMt9H1WeKUyziTS/exec";
@@ -248,6 +245,8 @@ var state = {
     nombreEds: '',
     codigoEds: '',
     cantSurtidores: '1',
+    cantIslas: '',
+    ubicacionSticker: '',
     surtidores: []
   },
   dirty: false
@@ -257,7 +256,6 @@ var PRODUCTOS = ['CTE','EXTRA','DIESEL'];
 var PRODUCTOS_TOTEM = ['CTE','EXTRA','DIESEL','GNV'];
 var MARCAS_SURTIDOR = ['WAYNE','GILBARCO'];
 
-// MODELOS DE SURTIDORES ACTUALIZADOS
 var MODELOS_SURTIDOR = [
   'H5000',
   'H4000',
@@ -407,12 +405,13 @@ function photoField(model, key, labelTitle){
   return wrapper;
 }
 
+// COMPONENTE CON CANTIDAD + ANCHO + ALTO POR PLACA DE PRODUCTO
 function renderProductosPlacasGroup(prodStateMap){
   var grid = el('div', {class: 'productos-interactive-grid'});
   
   PRODUCTOS.forEach(function(prod){
     if (!prodStateMap[prod]) {
-      prodStateMap[prod] = { selected: false, cant: '' };
+      prodStateMap[prod] = { selected: false, cant: '', ancho: '', alto: '' };
     }
     var itemState = prodStateMap[prod];
 
@@ -420,10 +419,21 @@ function renderProductosPlacasGroup(prodStateMap){
     var pillBtn = el('div', {class: 'prod-pill-btn', text: prod});
     
     var qtyBox = el('div', {class: 'prod-qty-box'});
-    qtyBox.appendChild(el('label', {text: 'Cant. placas:'}));
     
+    // Cantidad
+    qtyBox.appendChild(el('label', {text: 'Cant. placas:'}));
     var inputQty = el('input', {type: 'number', min: '1', placeholder: 'Cant.'});
     inputQty.value = itemState.cant || '';
+
+    // Ancho
+    qtyBox.appendChild(el('label', {text: 'Ancho (cm):'}));
+    var inputAncho = el('input', {type: 'number', placeholder: 'Ancho cm'});
+    inputAncho.value = itemState.ancho || '';
+
+    // Alto
+    qtyBox.appendChild(el('label', {text: 'Alto (cm):'}));
+    var inputAlto = el('input', {type: 'number', placeholder: 'Alto cm'});
+    inputAlto.value = itemState.alto || '';
 
     pillBtn.addEventListener('click', function(){
       itemState.selected = !itemState.selected;
@@ -435,17 +445,23 @@ function renderProductosPlacasGroup(prodStateMap){
       } else {
         card.classList.remove('active');
         itemState.cant = '';
+        itemState.ancho = '';
+        itemState.alto = '';
         inputQty.value = '';
+        inputAncho.value = '';
+        inputAlto.value = '';
       }
       markDirty();
     });
 
-    inputQty.addEventListener('input', function(){
-      itemState.cant = inputQty.value;
-      markDirty();
-    });
+    inputQty.addEventListener('input', function(){ itemState.cant = inputQty.value; markDirty(); });
+    inputAncho.addEventListener('input', function(){ itemState.ancho = inputAncho.value; markDirty(); });
+    inputAlto.addEventListener('input', function(){ itemState.alto = inputAlto.value; markDirty(); });
 
     qtyBox.appendChild(inputQty);
+    qtyBox.appendChild(inputAncho);
+    qtyBox.appendChild(inputAlto);
+    
     card.appendChild(pillBtn);
     card.appendChild(qtyBox);
     grid.appendChild(card);
@@ -465,10 +481,14 @@ function syncSurtidoresArray(m){
       marca: '',
       modelo: '',
       descripcion: '',
+      env_viga: '',
+      env_columna: '',
+      env_mueble: '',
+      env_techo: '',
       fotoCara1: '',
       fotoCara2: '',
-      productosCara1: { CTE: {selected:false, cant:''}, EXTRA: {selected:false, cant:''}, DIESEL: {selected:false, cant:''} },
-      productosCara2: { CTE: {selected:false, cant:''}, EXTRA: {selected:false, cant:''}, DIESEL: {selected:false, cant:''} }
+      productosCara1: { CTE: {selected:false, cant:'', ancho:'', alto:''}, EXTRA: {selected:false, cant:'', ancho:'', alto:''}, DIESEL: {selected:false, cant:'', ancho:'', alto:''} },
+      productosCara2: { CTE: {selected:false, cant:'', ancho:'', alto:''}, EXTRA: {selected:false, cant:'', ancho:'', alto:''}, DIESEL: {selected:false, cant:'', ancho:'', alto:''} }
     });
   }
   while (m.surtidores.length > n) m.surtidores.pop();
@@ -479,8 +499,8 @@ function surtidoresRepeatingBlock(m){
   var container = el('div',{});
   
   m.surtidores.forEach(function(s, idx){
-    if (!s.productosCara1) s.productosCara1 = { CTE: {selected:false, cant:''}, EXTRA: {selected:false, cant:''}, DIESEL: {selected:false, cant:''} };
-    if (!s.productosCara2) s.productosCara2 = { CTE: {selected:false, cant:''}, EXTRA: {selected:false, cant:''}, DIESEL: {selected:false, cant:''} };
+    if (!s.productosCara1) s.productosCara1 = { CTE: {selected:false, cant:'', ancho:'', alto:''}, EXTRA: {selected:false, cant:'', ancho:'', alto:''}, DIESEL: {selected:false, cant:'', ancho:'', alto:''} };
+    if (!s.productosCara2) s.productosCara2 = { CTE: {selected:false, cant:'', ancho:'', alto:''}, EXTRA: {selected:false, cant:'', ancho:'', alto:''} };
 
     var block = el('div',{class:'surtidor-block'});
     block.appendChild(el('div',{class:'surtidor-title', text:'⛽ SURTIDOR #' + (idx+1)}));
@@ -492,14 +512,30 @@ function surtidoresRepeatingBlock(m){
 
     block.appendChild(field('Descripción / Ubicación', textArea(s,'descripcion','Ej: Dispensador doble frente a caja')));
 
+    // CHECKLIST ENTORNO DEL SURTIDOR
+    var envTitle = el('div', {class:'subgrid-label', text:'ENTORNO DEL SURTIDOR'});
+    block.appendChild(envTitle);
+    
+    var envRow1 = el('div', {class: 'row2'});
+    envRow1.appendChild(field('Viga sobre el surtidor', choiceGroup(s, 'env_viga', ['SI','NO'])));
+    envRow1.appendChild(field('Pegado a la columna', choiceGroup(s, 'env_columna', ['SI','NO'])));
+    block.appendChild(envRow1);
+
+    var envRow2 = el('div', {class: 'row2'});
+    envRow2.appendChild(field('Mueble de producto cerca', choiceGroup(s, 'env_mueble', ['SI','NO'])));
+    envRow2.appendChild(field('Techo', choiceGroup(s, 'env_techo', ['SI','NO'])));
+    block.appendChild(envRow2);
+
+    // CARA 1
     var c1 = el('div', {class:'cara-subblock'});
-    c1.appendChild(el('div', {class:'cara-subblock-title', text:'CARA 1: Placas y Fotos'}));
+    c1.appendChild(el('div', {class:'cara-subblock-title', text:'CARA 1: Placas (Cantidad y Medidas) & Fotos'}));
     c1.appendChild(renderProductosPlacasGroup(s.productosCara1));
     c1.appendChild(photoField(s, 'fotoCara1', 'Foto Cara 1'));
     block.appendChild(c1);
 
+    // CARA 2
     var c2 = el('div', {class:'cara-subblock'});
-    c2.appendChild(el('div', {class:'cara-subblock-title', text:'CARA 2: Placas y Fotos'}));
+    c2.appendChild(el('div', {class:'cara-subblock-title', text:'CARA 2: Placas (Cantidad y Medidas) & Fotos'}));
     c2.appendChild(renderProductosPlacasGroup(s.productosCara2));
     c2.appendChild(photoField(s, 'fotoCara2', 'Foto Cara 2'));
     block.appendChild(c2);
@@ -550,7 +586,7 @@ function renderSurtidor(){
       return d;})()
   ]));
 
-  wrap.appendChild(sectionEl(3, 'Detalle de Surtidores y Placas', [
+  wrap.appendChild(sectionEl(3, 'Detalle de Surtidores, Entorno y Placas', [
     surtidoresRepeatingBlock(m)
   ]));
 
@@ -562,7 +598,9 @@ function renderSurtidor(){
     field('Profundidad surtidor', textInput(m,'profundidad','','number'))
   ]));
 
-  wrap.appendChild(sectionEl(5, 'Información general / Entorno', [
+  wrap.appendChild(sectionEl(5, 'Información general de la EDS / Entorno', [
+    field('Cantidad de islas', textInput(m, 'cantIslas', 'Ej: 3', 'number')),
+    field('Ubicación de sticker licencia', choiceGroup(m, 'ubicacionSticker', ['Sobre placa', 'A un lado del surtidor'])),
     field('Cuenta con baños', choiceGroup(m,'cuentaBanos',['SI','NO'])),
     photoField(m,'fotoBanos','Foto de los baños'),
     field('Cuenta con caja de luz', choiceGroup(m,'cuentaCajaLuz',['SI','NO'])),
@@ -627,7 +665,9 @@ function convertProdObjToString(prodObj){
   for (var k in prodObj){
     if (prodObj[k] && prodObj[k].selected){
       var cant = prodObj[k].cant || '1';
-      items.push(k + ": " + cant);
+      var ancho = prodObj[k].ancho ? (' (Ancho: ' + prodObj[k].ancho + 'cm') : '';
+      var alto = prodObj[k].alto ? (', Alto: ' + prodObj[k].alto + 'cm)') : (ancho ? ')' : '');
+      items.push(k + ": " + cant + ancho + alto);
     }
   }
   return items.length > 0 ? items.join(", ") : "Ninguno";
@@ -695,7 +735,7 @@ function saveUnifiedRecord(){
     btn.disabled = false;
     alert('¡Inspección guardada con éxito en Google Sheets y Drive!');
     state.form = { 
-      fecha:'', ciudad:'', nombreEds:'', codigoEds:'', cantSurtidores:'1', surtidores:[]
+      fecha:'', ciudad:'', nombreEds:'', codigoEds:'', cantSurtidores:'1', cantIslas:'', ubicacionSticker:'', surtidores:[]
     };
     markNew();
     setActiveTab('surtidor');
@@ -749,7 +789,7 @@ document.getElementById('btnNextOrSave').addEventListener('click', function(){
 document.getElementById('btnClear').addEventListener('click', function(){
   if (confirm('¿Limpiar todo el formulario?')){
     state.form = { 
-      fecha:'', ciudad:'', nombreEds:'', codigoEds:'', cantSurtidores:'1', surtidores:[]
+      fecha:'', ciudad:'', nombreEds:'', codigoEds:'', cantSurtidores:'1', cantIslas:'', ubicacionSticker:'', surtidores:[]
     };
     markNew();
     renderTab();

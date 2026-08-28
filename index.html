@@ -94,7 +94,6 @@
   }
   .check-pill.on{background:var(--accent);border-color:var(--accent);color:#fff;}
   
-  /* TARJETAS INTERACTIVAS DE PRODUCTO Y MEDIDAS */
   .productos-interactive-grid{
     display:grid;
     grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
@@ -247,6 +246,22 @@ var state = {
     cantSurtidores: '1',
     cantIslas: '',
     ubicacionSticker: '',
+    totem_alturaTotem: '',
+    totem_descripcionTipo: '',
+    totem_trabajoAlturas: [],
+    totem_obstaculos: [],
+    totem_obstaculoOtroText: '',
+    totem_cantTotem: '',
+    totem_cantCaras: '',
+    totem_cantProductos: '',
+    totem_tipoProducto: [],
+    totem_placaAncho: '',
+    totem_placaAlto: '',
+    totem_recuadroAncho: '',
+    totem_recuadroAlto: '',
+    totem_areaAncho: '',
+    totem_areaAlto: '',
+    totem_observaciones: '',
     surtidores: []
   },
   dirty: false
@@ -266,6 +281,9 @@ var MODELOS_SURTIDOR = [
   'PRIME PHD-3622-D',
   'ADVANTAGE'
 ];
+
+var TRABAJO_ALTURAS_OPTS = ['Escalera', 'Andamio', 'Manlift'];
+var OBSTACULOS_OPTS = ['Jardinera', 'Carretera', 'Techo', 'Otro'];
 
 function el(tag, attrs, children){
   var e = document.createElement(tag);
@@ -331,7 +349,7 @@ function choiceGroup(model, key, options){
   return g;
 }
 
-function checkPillGroup(model, key, options){
+function checkPillGroup(model, key, options, onChangeCallback){
   if (!model[key]) model[key] = [];
   var g = el('div', {class:'check-grid'});
   options.forEach(function(o){
@@ -343,6 +361,7 @@ function checkPillGroup(model, key, options){
       if (idx === -1){ model[key].push(o); c.classList.add('on'); }
       else { model[key].splice(idx,1); c.classList.remove('on'); }
       markDirty();
+      if (onChangeCallback) onChangeCallback(model[key]);
     });
     g.appendChild(c);
   });
@@ -405,7 +424,6 @@ function photoField(model, key, labelTitle){
   return wrapper;
 }
 
-// COMPONENTE CON CANTIDAD + ANCHO + ALTO POR PLACA DE PRODUCTO
 function renderProductosPlacasGroup(prodStateMap){
   var grid = el('div', {class: 'productos-interactive-grid'});
   
@@ -420,17 +438,14 @@ function renderProductosPlacasGroup(prodStateMap){
     
     var qtyBox = el('div', {class: 'prod-qty-box'});
     
-    // Cantidad
     qtyBox.appendChild(el('label', {text: 'Cant. placas:'}));
     var inputQty = el('input', {type: 'number', min: '1', placeholder: 'Cant.'});
     inputQty.value = itemState.cant || '';
 
-    // Ancho
     qtyBox.appendChild(el('label', {text: 'Ancho (cm):'}));
     var inputAncho = el('input', {type: 'number', placeholder: 'Ancho cm'});
     inputAncho.value = itemState.ancho || '';
 
-    // Alto
     qtyBox.appendChild(el('label', {text: 'Alto (cm):'}));
     var inputAlto = el('input', {type: 'number', placeholder: 'Alto cm'});
     inputAlto.value = itemState.alto || '';
@@ -488,7 +503,7 @@ function syncSurtidoresArray(m){
       fotoCara1: '',
       fotoCara2: '',
       productosCara1: { CTE: {selected:false, cant:'', ancho:'', alto:''}, EXTRA: {selected:false, cant:'', ancho:'', alto:''}, DIESEL: {selected:false, cant:'', ancho:'', alto:''} },
-      productosCara2: { CTE: {selected:false, cant:'', ancho:'', alto:''}, EXTRA: {selected:false, cant:'', ancho:'', alto:''}, DIESEL: {selected:false, cant:'', ancho:'', alto:''} }
+      productosCara2: { CTE: {selected:false, cant:'', ancho:'', alto:''}, EXTRA: {selected:false, cant:'', ancho:'', alto:''} }
     });
   }
   while (m.surtidores.length > n) m.surtidores.pop();
@@ -512,7 +527,6 @@ function surtidoresRepeatingBlock(m){
 
     block.appendChild(field('Descripción / Ubicación', textArea(s,'descripcion','Ej: Dispensador doble frente a caja')));
 
-    // CHECKLIST ENTORNO DEL SURTIDOR
     var envTitle = el('div', {class:'subgrid-label', text:'ENTORNO DEL SURTIDOR'});
     block.appendChild(envTitle);
     
@@ -526,14 +540,12 @@ function surtidoresRepeatingBlock(m){
     envRow2.appendChild(field('Techo', choiceGroup(s, 'env_techo', ['SI','NO'])));
     block.appendChild(envRow2);
 
-    // CARA 1
     var c1 = el('div', {class:'cara-subblock'});
     c1.appendChild(el('div', {class:'cara-subblock-title', text:'CARA 1: Placas (Cantidad y Medidas) & Fotos'}));
     c1.appendChild(renderProductosPlacasGroup(s.productosCara1));
     c1.appendChild(photoField(s, 'fotoCara1', 'Foto Cara 1'));
     block.appendChild(c1);
 
-    // CARA 2
     var c2 = el('div', {class:'cara-subblock'});
     c2.appendChild(el('div', {class:'cara-subblock-title', text:'CARA 2: Placas (Cantidad y Medidas) & Fotos'}));
     c2.appendChild(renderProductosPlacasGroup(s.productosCara2));
@@ -617,11 +629,24 @@ function renderTotem(){
   var syncBanner = el('div', {class:'banner', text:'✓ Datos vinculados con: ' + (m.nombreEds || 'Sin nombre') + ' (' + (m.fecha || 'Sin fecha') + ')'});
   wrap.appendChild(syncBanner);
 
-  wrap.appendChild(sectionEl(1, 'Datos del Tótem', [
-    (function(){var d=el('div',{class:'row2'});
-      d.appendChild(field('Altura tótem (cm)', textInput(m,'totem_alturaTotem','','number')));
-      d.appendChild(field('Modelo tótem', textInput(m,'totem_modeloTotem','')));
-      return d;})(),
+  // SECCIÓN 1 TÓTEM ACTUALIZADA
+  var obstaculoOtroDiv = el('div', {style: (m.totem_obstaculos && m.totem_obstaculos.indexOf('Otro') !== -1 ? 'display:block;' : 'display:none;')});
+  obstaculoOtroDiv.appendChild(field('Especificar otro obstáculo', textInput(m, 'totem_obstaculoOtroText', 'Describe el obstáculo...')));
+
+  var obstaculoGroup = checkPillGroup(m, 'totem_obstaculos', OBSTACULOS_OPTS, function(selectedArr){
+    if (selectedArr.indexOf('Otro') !== -1) {
+      obstaculoOtroDiv.style.display = 'block';
+    } else {
+      obstaculoOtroDiv.style.display = 'none';
+      m.totem_obstaculoOtroText = '';
+    }
+  });
+
+  wrap.appendChild(sectionEl(1, 'Datos y Entorno del Tótem', [
+    field('Altura tótem (cm)', textInput(m,'totem_alturaTotem','','number')),
+    field('Requisito de trabajo en alturas', checkPillGroup(m, 'totem_trabajoAlturas', TRABAJO_ALTURAS_OPTS)),
+    field('Obstáculo para instalación', obstaculoGroup),
+    obstaculoOtroDiv,
     field('Descripción del tótem', textArea(m,'totem_descripcionTipo','')),
     photoField(m,'fotoTotem1','Foto tótem - cara 1'),
     photoField(m,'fotoTotem2','Foto tótem - cara 2')
@@ -735,7 +760,10 @@ function saveUnifiedRecord(){
     btn.disabled = false;
     alert('¡Inspección guardada con éxito en Google Sheets y Drive!');
     state.form = { 
-      fecha:'', ciudad:'', nombreEds:'', codigoEds:'', cantSurtidores:'1', cantIslas:'', ubicacionSticker:'', surtidores:[]
+      fecha:'', ciudad:'', nombreEds:'', codigoEds:'', cantSurtidores:'1', cantIslas:'', ubicacionSticker:'',
+      totem_alturaTotem:'', totem_descripcionTipo:'', totem_trabajoAlturas:[], totem_obstaculos:[], totem_obstaculoOtroText:'',
+      totem_cantTotem:'', totem_cantCaras:'', totem_cantProductos:'', totem_tipoProducto:[], totem_placaAncho:'', totem_placaAlto:'',
+      totem_recuadroAncho:'', totem_recuadroAlto:'', totem_areaAncho:'', totem_areaAlto:'', totem_observaciones:'', surtidores:[]
     };
     markNew();
     setActiveTab('surtidor');
@@ -789,7 +817,10 @@ document.getElementById('btnNextOrSave').addEventListener('click', function(){
 document.getElementById('btnClear').addEventListener('click', function(){
   if (confirm('¿Limpiar todo el formulario?')){
     state.form = { 
-      fecha:'', ciudad:'', nombreEds:'', codigoEds:'', cantSurtidores:'1', cantIslas:'', ubicacionSticker:'', surtidores:[]
+      fecha:'', ciudad:'', nombreEds:'', codigoEds:'', cantSurtidores:'1', cantIslas:'', ubicacionSticker:'',
+      totem_alturaTotem:'', totem_descripcionTipo:'', totem_trabajoAlturas:[], totem_obstaculos:[], totem_obstaculoOtroText:'',
+      totem_cantTotem:'', totem_cantCaras:'', totem_cantProductos:'', totem_tipoProducto:[], totem_placaAncho:'', totem_placaAlto:'',
+      totem_recuadroAncho:'', totem_recuadroAlto:'', totem_areaAncho:'', totem_areaAlto:'', totem_observaciones:'', surtidores:[]
     };
     markNew();
     renderTab();
